@@ -1,0 +1,60 @@
+{% extends 'portal/base.html' %}
+
+{% block title %}Profile - CompactNodeInt Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Profile Information</h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="Profile Picture" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+                    {% else %}
+                        <img src="https://via.placeholder.com/150" alt="Default Profile Picture" class="rounded-circle img-fluid mb-3">
+                    {% endif %}
+                    <h4>{{ user.username }}</h4>
+                </div>
+                
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>Email:</strong> {{ user.email|default:"Not provided" }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Location:</strong> {{ profile.location|default:"Not provided" }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Birth Date:</strong> {{ profile.birth_date|default:"Not provided" }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Member Since:</strong> {{ profile.created_at|date:"F j, Y" }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Bio</h3>
+            </div>
+            <div class="card-body">
+                <p>{{ profile.bio|default:"No bio provided yet." }}</p>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Recent Activity</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">No recent activity to display.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

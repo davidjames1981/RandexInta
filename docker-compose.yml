@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/Portal/staticfiles
+      - media_volume:/app/Portal/media
+      - ./Files:/app/Files
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  celery:
+    build: .
+    command: celery -A CompactNodeInt worker -l INFO
+    volumes:
+      - .:/app
+      - ./Files:/app/Files
+    env_file:
+      - .env.docker
+    depends_on:
+      - web
+      - redis
+    networks:
+      - app-network
+
+  celery-beat:
+    build: .
+    command: celery -A CompactNodeInt beat -l INFO
+    volumes:
+      - .:/app
+      - ./Files:/app/Files
+    env_file:
+      - .env.docker
+    depends_on:
+      - web
+      - redis
+      - celery
+    networks:
+      - app-network
+
+volumes:
+  static_volume:
+  media_volume:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge 

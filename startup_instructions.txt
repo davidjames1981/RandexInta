@@ -1,0 +1,112 @@
+CompactNodeInt - Startup Instructions
+=====================================
+
+Prerequisites
+------------
+1. Python 3.8 or higher
+2. Redis Server (Windows: https://github.com/microsoftarchive/redis/releases)
+3. SQL Server with ODBC Driver 17
+4. Git (optional, for version control)
+
+Initial Setup
+------------
+1. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+2. Install required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Create a .env file in the project root with the following settings:
+   ```
+   # Database Settings
+   DB_ENGINE=mssql
+   DB_NAME=YourDatabaseName
+   DB_USER=YourUsername
+   DB_PASSWORD=YourPassword
+   DB_HOST=YourHost
+   DB_PORT=1433
+
+   # Redis Settings
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+
+   # File Paths
+   WATCH_FOLDER=C:\Path\To\Watch\Folder
+   COMPLETED_FOLDER=C:\Path\To\Completed\Folder
+   ERROR_FOLDER=C:\Path\To\Error\Folder
+
+   # Django Settings
+   SECRET_KEY=your-secret-key-here
+   DEBUG=True
+
+   # Task Frequencies (in seconds)
+   IMPORT_FREQUENCY=60
+   API_FREQUENCY=10
+
+   # API Settings
+   API_HOST=http://your-api-host
+   WAREHOUSE=your-warehouse-code
+   ```
+
+Starting Services
+---------------
+Start each service in a separate terminal window, in the following order:
+
+1. Start Redis Server:
+   ```
+   C:\Redis\redis-server.exe
+   ```
+
+2. Start Celery Worker (in project directory):
+   ```
+   celery -A CompactNodeInt worker --pool=solo -l info
+   ```
+
+3. Start Celery Beat (in project directory):
+   ```
+   celery -A CompactNodeInt beat -l info
+   ```
+
+4. Start Django Development Server (in project directory):
+   ```
+   python manage.py runserver
+   ```
+
+Monitoring
+---------
+1. Web Interface: http://localhost:8000
+2. Log Files:
+   - Import Task: C:\Cursor\RandexInt\Files\logs\import_task.log
+   - API Task: C:\Cursor\RandexInt\Files\logs\api_task.log
+
+Troubleshooting
+-------------
+1. If services aren't starting:
+   - Check if Redis is running
+   - Ensure all paths in .env exist
+   - Check log files for errors
+
+2. To reset services:
+   a. Stop all running processes
+   b. Delete celerybeat-schedule file
+   c. Restart services in order
+
+3. Common Issues:
+   - Port conflicts: Check if ports 6379 (Redis) or 8000 (Django) are in use
+   - Database connection: Verify SQL Server credentials and ODBC driver
+   - File permissions: Ensure write access to log and file directories
+
+Testing
+-------
+1. Place a test Excel file in the watch folder
+2. File should be processed within IMPORT_FREQUENCY seconds
+3. Orders should be sent to API within API_FREQUENCY seconds
+4. Check web interface for order status
+5. Monitor log files for detailed processing information 
+
+
