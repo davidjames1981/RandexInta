@@ -12,7 +12,7 @@ from Portal.utils.logger import import_logger as logger
 load_dotenv()
 
 # Get folder paths from environment variables
-WATCH_FOLDER = os.getenv('WATCH_FOLDER')
+WATCH_FOLDER = os.path.join(os.getenv('WATCH_FOLDER'), 'Orders')
 COMPLETED_FOLDER = os.getenv('COMPLETED_FOLDER')
 ERROR_FOLDER = os.getenv('ERROR_FOLDER')
 

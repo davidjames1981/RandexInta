@@ -14,22 +14,30 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env.local for local development
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.local')
-load_dotenv(env_path)
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file
+env_path = os.path.join(BASE_DIR, '.env')
+if not os.path.exists(env_path):
+    raise FileNotFoundError(f"Environment file not found at {env_path}")
+
+load_dotenv(env_path, override=True)
+
+# Print environment variables for debugging
+print(f"REDIS_HOST from env: {os.getenv('REDIS_HOST')}")
+print(f"REDIS_PORT from env: {os.getenv('REDIS_PORT')}")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ['*']  # In production, replace with your domain
 
@@ -82,15 +90,16 @@ WSGI_APPLICATION = 'CompactNodeInt.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',  # Using direct engine name instead of env var
-        'NAME': os.getenv('DB_NAME', 'RandexIntegration'),
-        'USER': os.getenv('DB_USER', 'sa'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'Alphabet123'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '1433'),
+        'ENGINE': os.getenv('DB_ENGINE'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
         'OPTIONS': {
             'driver': 'ODBC Driver 17 for SQL Server',
-            'TrustServerCertificate': 'yes',
+            'Encrypt': 'Optional',
+            'TrustServerCertificate': 'no',
         },
     }
 }
@@ -136,22 +145,42 @@ STATICFILES_DIRS = []
 
 # Media files
 MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'Portal', 'media')
+MEDIA_ROOT = os.getenv('MEDIA_ROOT', os.path.join(BASE_DIR, 'Portal', 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Get Redis configuration
+REDIS_HOST = os.getenv('REDIS_HOST')
+if not REDIS_HOST:
+    raise ValueError("REDIS_HOST environment variable is not set")
+
+REDIS_PORT = os.getenv('REDIS_PORT')
+if not REDIS_PORT:
+    raise ValueError("REDIS_PORT environment variable is not set")
+
 # Celery Configuration
-CELERY_BROKER_URL = f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
-CELERY_RESULT_BACKEND = f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Optional: Configure broker connection retry settings
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
 # Login redirect settings
 LOGIN_REDIRECT_URL = 'portal:home'
 LOGIN_URL = 'portal:login'
 LOGOUT_REDIRECT_URL = 'portal:login'
+
+# File Paths
+WATCH_FOLDER = os.getenv('WATCH_FOLDER')
+COMPLETED_FOLDER = os.getenv('COMPLETED_FOLDER')
+ERROR_FOLDER = os.getenv('ERROR_FOLDER')
+LOG_FOLDER = os.getenv('LOG_FOLDER')

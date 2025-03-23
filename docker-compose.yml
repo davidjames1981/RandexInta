@@ -3,64 +3,101 @@ version: '3.8'
 services:
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --bind 0.0.0.0:8000 CompactNodeInt.wsgi:application
     volumes:
-      - .:/app
-      - static_volume:/app/Portal/staticfiles
-      - media_volume:/app/Portal/media
       - ./Files:/app/Files
+      - ./media:/app/media
     ports:
       - "8000:8000"
-    env_file:
-      - .env.docker
+    environment:
+      - DB_ENGINE=${DB_ENGINE}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - WATCH_FOLDER=/app/Files
+      - COMPLETED_FOLDER=/app/Files/Completed
+      - ERROR_FOLDER=/app/Files/Error
+      - LOG_FOLDER=/app/Files/Logs
+      - API_HOST=${API_HOST}
+      - WAREHOUSE=${WAREHOUSE}
+      - IMPORT_FREQUENCY=${IMPORT_FREQUENCY}
+      - API_FREQUENCY=${API_FREQUENCY}
+      - PICK_CHECK_FREQUENCY=${PICK_CHECK_FREQUENCY}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
     depends_on:
       - redis
-    networks:
-      - app-network
 
   redis:
-    image: redis:7-alpine
+    image: redis:latest
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - app-network
 
   celery:
     build: .
     command: celery -A CompactNodeInt worker -l INFO
     volumes:
-      - .:/app
       - ./Files:/app/Files
-    env_file:
-      - .env.docker
+      - ./media:/app/media
+    environment:
+      - DB_ENGINE=${DB_ENGINE}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - WATCH_FOLDER=/app/Files
+      - COMPLETED_FOLDER=/app/Files/Completed
+      - ERROR_FOLDER=/app/Files/Error
+      - LOG_FOLDER=/app/Files/Logs
+      - API_HOST=${API_HOST}
+      - WAREHOUSE=${WAREHOUSE}
+      - IMPORT_FREQUENCY=${IMPORT_FREQUENCY}
+      - API_FREQUENCY=${API_FREQUENCY}
+      - PICK_CHECK_FREQUENCY=${PICK_CHECK_FREQUENCY}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
     depends_on:
       - web
       - redis
-    networks:
-      - app-network
 
   celery-beat:
     build: .
     command: celery -A CompactNodeInt beat -l INFO
     volumes:
-      - .:/app
       - ./Files:/app/Files
-    env_file:
-      - .env.docker
+      - ./media:/app/media
+    environment:
+      - DB_ENGINE=${DB_ENGINE}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - WATCH_FOLDER=/app/Files
+      - COMPLETED_FOLDER=/app/Files/Completed
+      - ERROR_FOLDER=/app/Files/Error
+      - LOG_FOLDER=/app/Files/Logs
+      - API_HOST=${API_HOST}
+      - WAREHOUSE=${WAREHOUSE}
+      - IMPORT_FREQUENCY=${IMPORT_FREQUENCY}
+      - API_FREQUENCY=${API_FREQUENCY}
+      - PICK_CHECK_FREQUENCY=${PICK_CHECK_FREQUENCY}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
     depends_on:
       - web
       - redis
-      - celery
-    networks:
-      - app-network
 
 volumes:
-  static_volume:
-  media_volume:
-  redis_data:
-
-networks:
-  app-network:
-    driver: bridge 
+  redis_data: 
