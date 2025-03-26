@@ -48,7 +48,7 @@ app.conf.beat_schedule = {
         'schedule': int(os.getenv('IMPORT_FREQUENCY', 60)),
     },
     'create_api_orders': {
-        'task': 'Portal.tasks.create_api_orders',
+        'task': 'Portal.tasks.api_order_creation.create_api_orders',
         'schedule': int(os.getenv('API_FREQUENCY', 10)),
     },
     'check_pick_status': {
