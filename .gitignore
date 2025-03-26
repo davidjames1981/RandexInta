@@ -32,6 +32,8 @@ db.sqlite3-journal
 # Celery
 celerybeat-schedule
 celerybeat.pid
+celerybeat-shm
+celerybeat-wal
 
 # Folders
 Files/
