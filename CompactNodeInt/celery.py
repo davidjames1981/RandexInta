@@ -41,23 +41,27 @@ if not pick_check_frequency:
 
 inventory_import_frequency = float(os.getenv('INVENTORY_IMPORT_FREQUENCY', '300'))  # Default 5 minutes
 
-# Configure the periodic tasks
+# Configure Celery Beat schedule
 app.conf.beat_schedule = {
-    'check-excel-files': {
+    'process_excel_files': {
         'task': 'Portal.tasks.process_excel_files',
-        'schedule': import_frequency,
+        'schedule': int(os.getenv('IMPORT_FREQUENCY', 60)),
     },
-    'process-api-orders': {
-        'task': 'Portal.tasks.api_order_creation.create_api_orders',
-        'schedule': api_frequency,
+    'create_api_orders': {
+        'task': 'Portal.tasks.create_api_orders',
+        'schedule': int(os.getenv('API_FREQUENCY', 10)),
     },
-    'check-pick-status': {
+    'check_pick_status': {
         'task': 'Portal.tasks.check_pick_status',
-        'schedule': pick_check_frequency,
+        'schedule': int(os.getenv('PICK_CHECK_FREQUENCY', 10)),
     },
-    'process-inventory-files': {
+    'import_inventory': {
         'task': 'Portal.tasks.import_inventory.process_inventory_files',
-        'schedule': inventory_import_frequency,
+        'schedule': int(os.getenv('INVENTORY_IMPORT_FREQUENCY', 300)),
+    },
+    'api_inventory_creation': {
+        'task': 'Portal.tasks.api_inventory.api_inventory_creation',
+        'schedule': int(os.getenv('INVENTORY_API_FREQUENCY', 60)),  # Default to 1 minute
     },
 }
 

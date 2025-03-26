@@ -1,39 +1,7 @@
-{% extends 'portal/base.html' %}
-{% load static %}
-{% load portal_extras %}
-
-{% block title %}Randex Integration{% endblock %}
+{% extends "portal/base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <!-- Messages Section -->
-    {% if messages %}
-    <div class="messages mb-3">
-        {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Auto-dismiss alerts after 5 seconds -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                setTimeout(function() {
-                    const closeButton = alert.querySelector('.btn-close');
-                    if (closeButton) {
-                        closeButton.click();
-                    }
-                }, 5000);
-            });
-        });
-    </script>
-
-
+<div class="container-fluid py-4">
     <!-- Order Statistics Row -->
     <div class="row mb-4">
         <div class="col-12">
@@ -42,10 +10,10 @@
                     <div class="row">
                         <div class="col-md-6">
                             <h5 class="card-title">Order Statistics</h5>
-                            <p class="card-text mb-1">Total Orders: <span id="total-orders">{{ orders|length }}</span></p>
-                            <p class="card-text mb-1">Pending Orders: <span id="pending-orders">{{ pending_count }}</span></p>
-                            <p class="card-text mb-1">Sent Orders: <span id="sent-orders">{{ sent_count }}</span></p>
-                            <p class="card-text">Failed Orders: <span id="error-orders">{{ error_count }}</span></p>
+                            <p class="card-text mb-1">Total Orders: <span id="total-orders">{{ total_orders }}</span></p>
+                            <p class="card-text mb-1">Pending Orders: <span id="pending-orders">{{ pending_orders }}</span></p>
+                            <p class="card-text mb-1">Sent Orders: <span id="sent-orders">{{ sent_orders }}</span></p>
+                            <p class="card-text">Failed Orders: <span id="failed-orders">{{ failed_orders }}</span></p>
                         </div>
                         <div class="col-md-6">
                             <h5 class="card-title">System Configuration</h5>
@@ -53,7 +21,7 @@
                             <p class="card-text mb-1">API Endpoint: {{ API_HOST }}</p>
                             <p class="card-text mb-1">Import Interval: {{ IMPORT_FREQUENCY }} seconds</p>
                             <p class="card-text mb-1">API Interval: {{ API_FREQUENCY }} seconds</p>
-                            <p class="card-text mb-1">Pick Check Interval: {{ PICK_CHECK_FREQUENCY }} seconds</p>
+                            <p class="card-text">Pick Check Interval: {{ PICK_CHECK_FREQUENCY }} seconds</p>
                         </div>
                     </div>
                 </div>
@@ -61,126 +29,39 @@
         </div>
     </div>
 
-    <!-- Watch Folder Card -->
+{% comment %}     <!-- Folder Information Row -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">Watch Folder</h5>
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#fileInstructionsModal">
-                            <i class="bi bi-question-circle text-primary" style="font-size: 1.2rem;"></i>
-                        </a>
-                    </div>
-                    <p class="card-text">{{ WATCH_FOLDER }}</p>
+                    <h5 class="card-title d-flex align-items-center">
+                        Watch Folder
+                        <button type="button" class="btn btn-link ms-2 p-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Place Excel files here for processing">
+                            <i class="bi bi-question-circle"></i>
+                        </button>
+                    </h5>
+                    <p class="card-text text-break">{{ WATCH_FOLDER }}</p>
                 </div>
             </div>
         </div>
-
-        <!-- Completed Files Card -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Completed Files</h5>
-                    <p class="card-text">{{ COMPLETED_FOLDER }}</p>
+                    <p class="card-text text-break">{{ COMPLETED_FOLDER }}</p>
                 </div>
             </div>
         </div>
-
-        <!-- Error Files Card -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Error Files</h5>
-                    <p class="card-text">{{ ERROR_FOLDER }}</p>
+                    <p class="card-text text-break">{{ ERROR_FOLDER }}</p>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- File Instructions Modal -->
-    <div class="modal fade" id="fileInstructionsModal" tabindex="-1" aria-labelledby="fileInstructionsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="fileInstructionsModalLabel">Excel File Instructions</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <h6 class="mb-3">File Requirements:</h6>
-                    <ul class="list-group mb-4">
-                        <li class="list-group-item">
-                            <strong>File Format:</strong> Excel files (.xlsx or .xls)
-                        </li>
-                        <li class="list-group-item">
-                            <strong>Required Columns:</strong>
-                            <ul class="mt-2">
-                                <li>Order Number</li>
-                                <li>Type</li>
-                                <li>Item</li>
-                                <li>Quantity</li>
-                            </ul>
-                        </li>
-                        <li class="list-group-item">
-                            <strong>Column Flexibility:</strong>
-                            <ul class="mt-2">
-                                <li>Columns can be in any order</li>
-                                <li>Column names are case-insensitive</li>
-                                <li>Spaces and underscores in column names are supported</li>
-                                <li>Additional columns will be ignored</li>
-                            </ul>
-                        </li>
-                    </ul>
-
-                    <h6 class="mb-3">Example Valid Column Headers:</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Example 1</th>
-                                    <th>Example 2</th>
-                                    <th>Example 3</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Order Number</td>
-                                    <td>ORDER_NUMBER</td>
-                                    <td>order number</td>
-                                </tr>
-                                <tr>
-                                    <td>Transaction Type</td>
-                                    <td>TRANSACTION_TYPE</td>
-                                    <td>transaction type</td>
-                                </tr>
-                                <tr>
-                                    <td>Item</td>
-                                    <td>ITEM</td>
-                                    <td>item</td>
-                                </tr>
-                                <tr>
-                                    <td>Quantity</td>
-                                    <td>QUANTITY</td>
-                                    <td>quantity</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h6 class="mb-3">Process Flow:</h6>
-                    <ol class="list-group list-group-numbered mb-4">
-                        <li class="list-group-item">Place your Excel file in the Watch Folder</li>
-                        <li class="list-group-item">The system checks for new files every {{ IMPORT_FREQUENCY }} seconds</li>
-                        <li class="list-group-item">Successfully processed files are moved to the Completed Folder</li>
-                        <li class="list-group-item">Files with errors are moved to the Error Folder</li>
-                    </ol>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+ {% endcomment %}
     <!-- Search Box -->
     <div class="row mb-3">
         <div class="col-md-6">
@@ -188,6 +69,11 @@
                 <input type="text" name="search" class="form-control me-2" placeholder="Search by Order Number or Item" value="{{ search_query }}">
                 <button type="submit" class="btn btn-primary">Search</button>
             </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#fileInstructionsModal">
+                File Instructions
+            </button>
         </div>
     </div>
 
@@ -224,15 +110,15 @@
                                 </a>
                             </th>
                             <th>
-                                <a href="?sort_by=order_number" class="text-decoration-none text-dark">
+                                <a href="?sort_by=order" class="text-decoration-none text-dark">
                                     Order
-                                    {% if sort_by == 'order_number' %}↑{% elif sort_by == '-order_number' %}↓{% endif %}
+                                    {% if sort_by == 'order' %}↑{% elif sort_by == '-order' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>
-                                <a href="?sort_by=transaction_type" class="text-decoration-none text-dark">
+                                <a href="?sort_by=type" class="text-decoration-none text-dark">
                                     Type
-                                    {% if sort_by == 'transaction_type' %}↑{% elif sort_by == '-transaction_type' %}↓{% endif %}
+                                    {% if sort_by == 'type' %}↑{% elif sort_by == '-type' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>
@@ -241,36 +127,21 @@
                                     {% if sort_by == 'item' %}↑{% elif sort_by == '-item' %}↓{% endif %}
                                 </a>
                             </th>
+                            <th>Req</th>
+                            <th>Conf</th>
                             <th>
-                                <a href="?sort_by=quantity" class="text-decoration-none text-dark">
-                                    Req
-                                    {% if sort_by == 'quantity' %}↑{% elif sort_by == '-quantity' %}↓{% endif %}
-                                </a>
-                            </th>
-                            <th>
-                                <a href="?sort_by=actual_qty" class="text-decoration-none text-dark">
-                                    Conf
-                                    {% if sort_by == 'actual_qty' %}↑{% elif sort_by == '-actual_qty' %}↓{% endif %}
-                                </a>
-                            </th>
-                            <th>
-                                <a href="?sort_by=sent_status" class="text-decoration-none text-dark">
+                                <a href="?sort_by=status" class="text-decoration-none text-dark">
                                     Status
-                                    {% if sort_by == 'sent_status' %}↑{% elif sort_by == '-sent_status' %}↓{% endif %}
+                                    {% if sort_by == 'status' %}↑{% elif sort_by == '-status' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>
-                                <a href="?sort_by=processed_at" class="text-decoration-none text-dark">
+                                <a href="?sort_by=timestamp" class="text-decoration-none text-dark">
                                     Time
-                                    {% if sort_by == 'processed_at' %}↑{% elif sort_by == '-processed_at' %}↓{% endif %}
+                                    {% if sort_by == 'timestamp' %}↑{% elif sort_by == '-timestamp' %}↓{% endif %}
                                 </a>
                             </th>
-                            <th>
-                                <a href="?sort_by=user" class="text-decoration-none text-dark">
-                                    User
-                                    {% if sort_by == 'user' %}↑{% elif sort_by == '-user' %}↓{% endif %}
-                                </a>
-                            </th>
+                            <th>User</th>
                             <th>Error</th>
                             <th>Actions</th>
                         </tr>
@@ -279,27 +150,23 @@
                         {% for order in orders %}
                         <tr>
                             <td>{{ order.id }}</td>
-                            <td>{{ order.order_number }}</td>
-                            <td>{{ order.transaction_type }}</td>
-                            <td>{{ order.item }}</td>
-                            <td>{{ order.quantity }}</td>
+                            <td>{{ order.order_number|default:"-" }}</td>
+                            <td>{{ order.transaction_type|default:"-" }}</td>
+                            <td>{{ order.item|default:"-" }}</td>
+                            <td>{{ order.quantity|default:"-" }}</td>
                             <td>{{ order.actual_qty|default:"-" }}</td>
                             <td>
                                 {% if order.sent_status == 0 %}
-                                    <span class="badge bg-warning">Pending</span>
+                                    <span class="badge bg-info text-dark">Imported</span>
                                 {% elif order.sent_status == 1 %}
-                                    <span class="badge bg-info">Posted</span>
-                                {% elif order.sent_status == 2 %}
-                                    <span class="badge bg-primary">Sent</span>
-                                {% elif order.sent_status == 3 %}
-                                    <span class="badge bg-success">Confirmed</span>
+                                    <span class="badge bg-secondary">Posted</span>
                                 {% else %}
                                     <span class="badge bg-danger">Error</span>
                                 {% endif %}
                             </td>
-                            <td>{{ order.processed_at|date:"H:i:s" }}</td>
+                            <td>{{ order.processed_at|date:"H:i:s"|default:"-" }}</td>
                             <td>{{ order.user|default:"-" }}</td>
-                            <td>{{ order.api_error|default:"" }}</td>
+                            <td>{{ order.api_error|default:"-" }}</td>
                             <td>
                                 <a href="{% url 'portal:reset_order_status' order.id %}" 
                                    class="btn btn-sm btn-warning"
@@ -322,40 +189,37 @@
                 <div class="text-muted">
                     Page {{ page }} of {{ total_pages }} ({{ total_records }} total records)
                 </div>
-                <nav aria-label="Order navigation">
+                <nav aria-label="Orders navigation">
                     <ul class="pagination mb-0">
+                        <!-- First page -->
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
                             <a class="page-link" href="?page=1&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="First">
                                 <span aria-hidden="true">««</span>
                             </a>
                         </li>
+                        <!-- Previous page -->
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ page|add:'-1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Previous">
                                 <span aria-hidden="true">«</span>
                             </a>
                         </li>
-                        {% if page > 2 %}
-                            <li class="page-item">
-                                <span class="page-link">...</span>
-                            </li>
-                        {% endif %}
-                        {% for p in total_pages|get_range:page %}
-                            {% if p >= page|add:'-1' and p <= page|add:'1' %}
-                                <li class="page-item {% if p == page %}active{% endif %}">
-                                    <a class="page-link" href="?page={{ p }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}">{{ p }}</a>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-                        {% if page < total_pages|add:'-1' %}
-                            <li class="page-item">
-                                <span class="page-link">...</span>
-                            </li>
-                        {% endif %}
+                        <!-- Page numbers -->
+                        {% with page_range=total_pages|default:1 %}
+                            {% for p in page_range|rjust:page_range %}
+                                {% if forloop.counter >= page|add:'-2' and forloop.counter <= page|add:'2' %}
+                                    <li class="page-item {% if forloop.counter == page %}active{% endif %}">
+                                        <a class="page-link" href="?page={{ forloop.counter }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}">{{ forloop.counter }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                        <!-- Next page -->
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ page|add:'1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Next">
                                 <span aria-hidden="true">»</span>
                             </a>
                         </li>
+                        <!-- Last page -->
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ total_pages }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Last">
                                 <span aria-hidden="true">»»</span>
@@ -363,6 +227,90 @@
                         </li>
                     </ul>
                 </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Instructions Modal -->
+    <div class="modal fade" id="fileInstructionsModal" tabindex="-1" aria-labelledby="fileInstructionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fileInstructionsModalLabel">Order Excel File Instructions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="mb-3">File Requirements:</h6>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item">
+                            <strong>File Format:</strong> Excel files (.xlsx or .xls)
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Required Columns:</strong>
+                            <ul class="mt-2">
+                                <li>Order</li>
+                                <li>Type (PUT or PICK)</li>
+                                <li>Item</li>
+                                <li>Req (Quantity)</li>
+                            </ul>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Column Flexibility:</strong>
+                            <ul class="mt-2">
+                                <li>Columns can be in any order</li>
+                                <li>Column names are case-insensitive</li>
+                                <li>Spaces and underscores in column names are supported</li>
+                                <li>Additional columns will be ignored</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h6 class="mb-3">Example Valid Column Headers:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Example 1</th>
+                                    <th>Example 2</th>
+                                    <th>Example 3</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Order</td>
+                                    <td>ORDER</td>
+                                    <td>order</td>
+                                </tr>
+                                <tr>
+                                    <td>Type</td>
+                                    <td>TYPE</td>
+                                    <td>type</td>
+                                </tr>
+                                <tr>
+                                    <td>Item</td>
+                                    <td>ITEM</td>
+                                    <td>item</td>
+                                </tr>
+                                <tr>
+                                    <td>Req</td>
+                                    <td>REQ</td>
+                                    <td>req</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="mb-3">Process Flow:</h6>
+                    <ol class="list-group list-group-numbered mb-4">
+                        <li class="list-group-item">Place your Excel file in the Watch Folder</li>
+                        <li class="list-group-item">The system checks for new files every {{ IMPORT_FREQUENCY }} seconds</li>
+                        <li class="list-group-item">Successfully processed files are moved to the Completed Folder</li>
+                        <li class="list-group-item">Files with errors are moved to the Error Folder</li>
+                    </ol>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -406,25 +354,21 @@ function updateTable() {
             const resetUrl = '{% url "portal:reset_order_status" 999999 %}'.replace('999999', order.id);
             tr.innerHTML = `
                 <td>${order.id}</td>
-                <td>${order.order_number}</td>
-                <td>${order.transaction_type}</td>
-                <td>${order.item}</td>
-                <td>${order.quantity}</td>
-                <td>${order.actual_qty !== null ? order.actual_qty : '-'}</td>
+                <td>${order.order_number || '-'}</td>
+                <td>${order.transaction_type || '-'}</td>
+                <td>${order.item || '-'}</td>
+                <td>${order.quantity || '-'}</td>
+                <td>${order.actual_qty || '-'}</td>
                 <td>
                     ${order.sent_status === 0 ? 
-                        '<span class="badge bg-warning">Pending</span>' : 
+                        '<span class="badge bg-warning">Posted</span>' : 
                         order.sent_status === 1 ? 
-                            '<span class="badge bg-info">Posted</span>' :
-                            order.sent_status === 2 ?
-                                '<span class="badge bg-primary">Sent</span>' :
-                                order.sent_status === 3 ?
-                                    '<span class="badge bg-success">Confirmed</span>' :
-                                    '<span class="badge bg-danger">Error</span>'}
+                            '<span class="badge bg-success">Confirmed</span>' :
+                            '<span class="badge bg-danger">Error</span>'}
                 </td>
-                <td>${new Date(order.processed_at).toLocaleTimeString()}</td>
-                <td>${order.user !== null ? order.user : '-'}</td>
-                <td>${order.api_error || ''}</td>
+                <td>${order.processed_at ? new Date(order.processed_at).toLocaleTimeString() : '-'}</td>
+                <td>${order.user || '-'}</td>
+                <td>${order.api_error || '-'}</td>
                 <td>
                     <a href="${resetUrl}" 
                        class="btn btn-sm btn-warning"
@@ -436,31 +380,31 @@ function updateTable() {
             tbody.appendChild(tr);
             
             if (order.sent_status === 0) pendingCount++;
-            else if (order.sent_status === 1 || order.sent_status === 2) sentCount++; // Include both Posted and Sent
-            else if (order.sent_status > 3) errorCount++; // Errors are > 3 based on your logic
+            else if (order.sent_status === 1) sentCount++;
+            else errorCount++;
         });
         
         // Update statistics
         document.getElementById('total-orders').textContent = data.pagination.total_records;
         document.getElementById('pending-orders').textContent = pendingCount;
         document.getElementById('sent-orders').textContent = sentCount;
-        document.getElementById('error-orders').textContent = errorCount;
+        document.getElementById('failed-orders').textContent = errorCount;
         
         // Update last refresh time
         document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-    })
-    .catch(error => {
-        console.error('Error updating table:', error);
     });
 }
 
-// Update table every 10 seconds
-setInterval(updateTable, 10000);
+// Update table every 30 seconds
+setInterval(updateTable, 30000);
 
 // Initial update
 updateTable();
-</script>
 
-<!-- Add Bootstrap Icons CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+</script>
 {% endblock %}

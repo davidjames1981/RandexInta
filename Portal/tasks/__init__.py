@@ -17,13 +17,15 @@ from .import_order import process_excel_files
 from .api_order_creation import create_api_orders
 from .check_pick_status import check_pick_status
 from .import_inventory import process_inventory_files
+from .api_inventory import api_inventory_creation
 
 # Register all tasks
 __all__ = [
     'process_excel_files',
     'create_api_orders',
     'check_pick_status',
-    'process_inventory_files'
+    'process_inventory_files',
+    'api_inventory_creation',
 ]
 
 # Ensure tasks are registered with Celery
@@ -31,5 +33,6 @@ tasks = [
     process_excel_files,
     create_api_orders,
     check_pick_status,
-    process_inventory_files
+    process_inventory_files,
+    api_inventory_creation,
 ] 

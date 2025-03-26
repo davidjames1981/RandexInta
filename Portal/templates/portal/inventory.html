@@ -156,6 +156,12 @@
                     <thead>
                         <tr>
                             <th>
+                                <a href="?sort_by=id" class="text-decoration-none text-dark">
+                                    ID
+                                    {% if sort_by == 'id' %}↑{% elif sort_by == '-id' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>
                                 <a href="?sort_by=item" class="text-decoration-none text-dark">
                                     Item
                                     {% if sort_by == 'item' %}↑{% elif sort_by == '-item' %}↓{% endif %}
@@ -173,9 +179,6 @@
                                     {% if sort_by == 'uom' %}↑{% elif sort_by == '-uom' %}↓{% endif %}
                                 </a>
                             </th>
-                            <th>CUS1</th>
-                            <th>CUS2</th>
-                            <th>CUS3</th>
                             <th>
                                 <a href="?sort_by=status" class="text-decoration-none text-dark">
                                     Status
@@ -194,17 +197,15 @@
                     <tbody id="inventory-table-body">
                         {% for item in inventory_items %}
                         <tr>
+                            <td>{{ item.id }}</td>
                             <td>{{ item.item }}</td>
                             <td>{{ item.description }}</td>
                             <td>{{ item.uom }}</td>
-                            <td>{{ item.cus1|default:"-" }}</td>
-                            <td>{{ item.cus2|default:"-" }}</td>
-                            <td>{{ item.cus3|default:"-" }}</td>
                             <td>
                                 {% if item.status == 0 %}
-                                    <span class="badge bg-success">Active</span>
+                                    <span class="badge bg-warning">Not Sent</span>
                                 {% elif item.status == 1 %}
-                                    <span class="badge bg-warning">Modified</span>
+                                    <span class="badge bg-success">Complete</span>
                                 {% else %}
                                     <span class="badge bg-danger">Error</span>
                                 {% endif %}
@@ -220,7 +221,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center">No inventory items found</td>
+                            <td colspan="7" class="text-center">No inventory items found</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -300,7 +301,7 @@ function updateTable() {
         tbody.innerHTML = '';
         
         if (data.inventory_items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No inventory items found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No inventory items found</td></tr>';
             return;
         }
         
@@ -312,17 +313,15 @@ function updateTable() {
             const tr = document.createElement('tr');
             const resetUrl = '{% url "portal:reset_inventory_status" 999999 %}'.replace('999999', item.id);
             tr.innerHTML = `
+                <td>${item.id}</td>
                 <td>${item.item}</td>
                 <td>${item.description}</td>
                 <td>${item.uom}</td>
-                <td>${item.cus1 || '-'}</td>
-                <td>${item.cus2 || '-'}</td>
-                <td>${item.cus3 || '-'}</td>
                 <td>
                     ${item.status === 0 ? 
-                        '<span class="badge bg-success">Active</span>' : 
+                        '<span class="badge bg-warning">Not Sent</span>' : 
                         item.status === 1 ? 
-                            '<span class="badge bg-warning">Modified</span>' :
+                            '<span class="badge bg-success">Complete</span>' :
                             '<span class="badge bg-danger">Error</span>'}
                 </td>
                 <td>${new Date(item.import_timestamp).toLocaleString()}</td>
