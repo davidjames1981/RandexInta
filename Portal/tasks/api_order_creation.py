@@ -14,6 +14,9 @@ def create_api_orders():
     """
     Task to create orders via API for records with sent_status = 0
     Updates sent_status to 1 on success, 99 on failure
+    Order type is determined by transaction_type:
+    - PUT orders: order_type = 3
+    - PICK orders: order_type = 4
     """
     logger.info("="*80)
     logger.info("Starting API order creation task")
@@ -25,7 +28,7 @@ def create_api_orders():
         logger.debug(f"Configuration - API Host: {api_host}, Warehouse: {warehouse}")
         
         # Get all pending orders grouped by order number
-        pending_orders = OrderData.objects.filter(sent_status=0).values('order_number').distinct()
+        pending_orders = OrderData.objects.filter(sent_status=0).values('order_number', 'transaction_type').distinct()
         
         if pending_orders:
             logger.info(f"Found {len(pending_orders)} pending orders to process")
@@ -39,6 +42,11 @@ def create_api_orders():
         
         for order_group in pending_orders:
             order_number = order_group['order_number']
+            transaction_type = order_group['transaction_type']
+            
+            # Set order_type based on transaction_type
+            order_type = 4 if transaction_type == 'PICK' else 3  # 4 for PICK, 3 for PUT
+            
             order_lines = OrderData.objects.filter(
                 order_number=order_number,
                 sent_status=0
@@ -49,14 +57,14 @@ def create_api_orders():
                 logger.warning(f"No lines found for order {order_number} despite being in pending orders")
                 continue
                 
-            logger.info(f"\nProcessing order {order_number} with {len(order_lines)} lines")
+            logger.info(f"\nProcessing {transaction_type} order {order_number} with {len(order_lines)} lines")
             logger.debug(f"Order lines for {order_number}: {list(order_lines.values())}")
             
             # Prepare API payload
             payload = {
                 "name": order_number,
                 "warehouse": warehouse,
-                "order_type": 3,  # Hardcoded as per example
+                "order_type": order_type,  # Dynamic based on transaction_type
                 "order_lines": []
             }
             
@@ -71,12 +79,12 @@ def create_api_orders():
                 logger.debug(f"Added line {index} to payload: {order_line}")
             
             # Log the full payload
-            logger.info(f"Request Payload for order {order_number}:")
+            logger.info(f"Request Payload for {transaction_type} order {order_number}:")
             logger.debug(json.dumps(payload, indent=2))
                 
             try:
                 # Make API request with timeout
-                logger.info(f"Sending request to API for order {order_number}")
+                logger.info(f"Sending request to API for {transaction_type} order {order_number}")
                 logger.debug(f"Request URL: {api_url}")
                 logger.debug(f"Request Headers: {{'Content-Type': 'application/json'}}")
                 
@@ -101,24 +109,24 @@ def create_api_orders():
                 
                 # Update status to success
                 order_lines.update(sent_status=1)
-                logger.info(f"Successfully processed order {order_number}")
+                logger.info(f"Successfully processed {transaction_type} order {order_number}")
                 logger.debug(f"Updated {len(order_lines)} lines to sent_status=1")
                 
             except requests.exceptions.Timeout:
-                error_message = f"Timeout while connecting to API for order {order_number}"
+                error_message = f"Timeout while connecting to API for {transaction_type} order {order_number}"
                 logger.error(error_message)
                 logger.debug(f"Request timed out after 30 seconds")
                 order_lines.update(sent_status=99, api_error=error_message)
                 
             except requests.exceptions.ConnectionError as e:
-                error_message = f"Connection error for order {order_number}: {str(e)}"
+                error_message = f"Connection error for {transaction_type} order {order_number}: {str(e)}"
                 logger.error(error_message)
                 logger.debug(f"Connection Details: Host={api_host}")
                 logger.exception("Full connection error traceback:")
                 order_lines.update(sent_status=99, api_error=error_message)
                 
             except requests.exceptions.RequestException as e:
-                error_message = f"API error for order {order_number}: {str(e)}"
+                error_message = f"API error for {transaction_type} order {order_number}: {str(e)}"
                 logger.error(error_message)
                 logger.exception("Full API error traceback:")
                 order_lines.update(sent_status=99, api_error=error_message)

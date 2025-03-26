@@ -184,3 +184,17 @@ WATCH_FOLDER = os.getenv('WATCH_FOLDER')
 COMPLETED_FOLDER = os.getenv('COMPLETED_FOLDER')
 ERROR_FOLDER = os.getenv('ERROR_FOLDER')
 LOG_FOLDER = os.getenv('LOG_FOLDER')
+IMPORT_FOLDER = os.getenv('WATCH_FOLDER')  # Use WATCH_FOLDER for imports
+PROCESSED_FOLDER = os.getenv('COMPLETED_FOLDER')  # Use COMPLETED_FOLDER for processed files
+
+# API Configuration
+API_HOST = os.getenv('API_HOST')
+if not API_HOST:
+    print("Warning: API_HOST not set in environment")
+    API_HOST = 'http://localhost:8000'  # Default value
+
+# Import logging configuration
+from Portal.logging_config import LOGGING
+
+# Merge logging configuration
+LOGGING = LOGGING

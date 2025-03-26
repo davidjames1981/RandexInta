@@ -156,11 +156,13 @@
                             <td>{{ order.quantity|default:"-" }}</td>
                             <td>{{ order.actual_qty|default:"-" }}</td>
                             <td>
-                                {% if order.sent_status == 0 %}
-                                    <span class="badge bg-info text-dark">Imported</span>
+                                {% if order.sent_status == 0 or order.sent_status == None %}
+                                    <span class="badge bg-secondary">Imported</span>
                                 {% elif order.sent_status == 1 %}
-                                    <span class="badge bg-secondary">Posted</span>
-                                {% else %}
+                                    <span class="badge bg-warning">Sent</span>
+                                {% elif order.sent_status == 3 %}
+                                    <span class="badge bg-success">Complete</span>
+                                {% elif order.sent_status == 99 %}
                                     <span class="badge bg-danger">Error</span>
                                 {% endif %}
                             </td>
@@ -345,8 +347,9 @@ function updateTable() {
             return;
         }
         
-        let pendingCount = 0;
+        let importedCount = 0;
         let sentCount = 0;
+        let completeCount = 0;
         let errorCount = 0;
         
         data.orders.forEach(order => {
@@ -360,11 +363,15 @@ function updateTable() {
                 <td>${order.quantity || '-'}</td>
                 <td>${order.actual_qty || '-'}</td>
                 <td>
-                    ${order.sent_status === 0 ? 
-                        '<span class="badge bg-warning">Posted</span>' : 
+                    ${order.sent_status === 0 || order.sent_status === null ? 
+                        '<span class="badge bg-secondary">Imported</span>' : 
                         order.sent_status === 1 ? 
-                            '<span class="badge bg-success">Confirmed</span>' :
-                            '<span class="badge bg-danger">Error</span>'}
+                            '<span class="badge bg-warning">Sent</span>' :
+                            order.sent_status === 3 ?
+                                '<span class="badge bg-success">Complete</span>' :
+                                order.sent_status === 99 ?
+                                    '<span class="badge bg-danger">Error</span>' :
+                                    '<span class="badge bg-secondary">Unknown</span>'}
                 </td>
                 <td>${order.processed_at ? new Date(order.processed_at).toLocaleTimeString() : '-'}</td>
                 <td>${order.user || '-'}</td>
@@ -379,15 +386,16 @@ function updateTable() {
             `;
             tbody.appendChild(tr);
             
-            if (order.sent_status === 0) pendingCount++;
+            if (order.sent_status === 0 || order.sent_status === null) importedCount++;
             else if (order.sent_status === 1) sentCount++;
-            else errorCount++;
+            else if (order.sent_status === 3) completeCount++;
+            else if (order.sent_status === 99) errorCount++;
         });
         
         // Update statistics
         document.getElementById('total-orders').textContent = data.pagination.total_records;
-        document.getElementById('pending-orders').textContent = pendingCount;
-        document.getElementById('sent-orders').textContent = sentCount;
+        document.getElementById('pending-orders').textContent = importedCount;
+        document.getElementById('sent-orders').textContent = sentCount + completeCount;
         document.getElementById('failed-orders').textContent = errorCount;
         
         // Update last refresh time

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from datetime import datetime, timedelta
 
 # Create your models here.
 
@@ -61,3 +62,35 @@ class MasterInventory(models.Model):
     
     def __str__(self):
         return f"{self.item} - {self.description}"
+
+class TaskConfig(models.Model):
+    TASK_CHOICES = [
+        ('Portal.tasks.import_order.process_excel_files', 'Process Excel Files'),
+        ('Portal.tasks.api_order_creation.create_api_orders', 'Create API Orders'),
+        ('Portal.tasks.check_pick_status', 'Check Pick Status'),
+        ('Portal.tasks.import_inventory.process_inventory_files', 'Process Inventory Files'),
+        ('Portal.tasks.api_inventory.api_inventory_creation', 'Create Inventory API'),
+    ]
+
+    task_name = models.CharField(max_length=255, choices=TASK_CHOICES, unique=True)
+    is_enabled = models.BooleanField(default=True)
+    frequency = models.IntegerField(default=60, help_text="Frequency in seconds")
+    last_run = models.DateTimeField(null=True, blank=True)
+    next_run = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Task Configuration'
+        verbose_name_plural = 'Task Configurations'
+
+    def __str__(self):
+        status = 'Enabled' if self.is_enabled else 'Disabled'
+        frequency = f'{self.frequency}s' if self.frequency else 'Not set'
+        return f"{self.get_task_name_display()} ({status}, {frequency})"
+
+    def save(self, *args, **kwargs):
+        # Update next_run based on frequency
+        if self.last_run and self.is_enabled:
+            self.next_run = self.last_run + timedelta(seconds=self.frequency)
+        super().save(*args, **kwargs)

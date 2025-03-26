@@ -3,7 +3,11 @@ import requests
 from celery import shared_task
 from django.conf import settings
 from Portal.models import MasterInventory
-from Portal.utils.logger import general_logger as logger
+import logging
+from datetime import datetime
+
+# Set up logger
+logger = logging.getLogger('inventory_api')
 
 @shared_task(name='Portal.tasks.api_inventory.api_inventory_creation')
 def api_inventory_creation():
@@ -13,27 +17,24 @@ def api_inventory_creation():
     Updates status to 1 (processed) after successful API push.
     """
     try:
-        # Get API configuration
-        api_host = os.getenv('API_HOST', '').rstrip('/')
-        api_endpoint = f"{api_host}/api/item/"
-        
-        logger.info("Starting inventory API creation task")
-        
-        # Get all pending inventory items
+        # Get API configuration from settings
+        api_host = settings.API_HOST
+        if not api_host:
+            logger.error("API_HOST not configured in settings")
+            return "API_HOST not configured"
+
+        # Get pending inventory items
         pending_items = MasterInventory.objects.filter(status=0)
-        total_items = pending_items.count()
-        logger.info(f"Found {total_items} pending inventory items to process")
-        
-        if total_items == 0:
+        if not pending_items.exists():
             logger.info("No pending inventory items to process")
-            return
-        
+            return "No items to process"
+
         success_count = 0
         error_count = 0
         
         for item in pending_items:
             try:
-                # Prepare API payload
+                # Prepare API payload according to required format
                 payload = {
                     "name": item.item,
                     "info1": item.description,
@@ -50,57 +51,48 @@ def api_inventory_creation():
                     "quantity": 0
                 }
                 
-                logger.debug(f"Sending inventory item {item.item} to API")
-                logger.debug(f"API Payload: {payload}")
+                logger.info(f"Processing inventory item: {item.item}")
+                logger.debug(f"API payload: {payload}")
                 
                 # Make API request
                 response = requests.post(
-                    api_endpoint,
+                    f"{api_host}/api/item/",
                     json=payload,
-                    headers={'Content-Type': 'application/json'},
-                    timeout=30  # 30 seconds timeout
+                    timeout=30
                 )
                 
-                # Check response
-                response.raise_for_status()
-                
-                # Update item status on success
-                item.status = 1  # Set to processed
-                item.api_error = None  # Clear any previous errors
+                if response.status_code == 201:
+                    # Update status to success
+                    item.status = 1
+                    item.save()
+                    success_count += 1
+                    logger.info(f"Successfully created inventory item: {item.item}")
+                else:
+                    # Update status to error
+                    item.status = 2
+                    item.save()
+                    error_count += 1
+                    logger.error(f"API error for item {item.item}: {response.text}")
+                    
+            except requests.exceptions.RequestException as req_error:
+                # Handle request errors
+                item.status = 2
                 item.save()
-                
-                success_count += 1
-                logger.info(f"Successfully processed inventory item: {item.item}")
-                
-            except requests.exceptions.RequestException as e:
                 error_count += 1
-                error_message = f"API request failed for item {item.item}: {str(e)}"
-                logger.error(error_message)
+                logger.error(f"Request error for item {item.item}: {str(req_error)}")
                 
-                # Update item with error
-                item.status = 2  # Set to error
-                item.api_error = error_message
+            except Exception as item_error:
+                # Handle other errors
+                item.status = 2
                 item.save()
-                
-            except Exception as e:
                 error_count += 1
-                error_message = f"Unexpected error processing item {item.item}: {str(e)}"
-                logger.error(error_message, exc_info=True)
-                
-                # Update item with error
-                item.status = 2  # Set to error
-                item.api_error = error_message
-                item.save()
-        
-        # Log final statistics
-        logger.info(f"Inventory API task completed. "
-                   f"Processed: {total_items}, "
-                   f"Success: {success_count}, "
-                   f"Errors: {error_count}")
+                logger.error(f"Error processing item {item.item}: {str(item_error)}")
+
+        return f"Processed {success_count + error_count} items: {success_count} successful, {error_count} failed"
         
     except Exception as e:
-        logger.error(f"Critical error in inventory API task: {str(e)}", exc_info=True)
-        raise  # Re-raise to mark task as failed
+        logger.error(f"Critical error in api_inventory_creation: {str(e)}")
+        return f"Error: {str(e)}"
 
     return {
         'total': total_items,

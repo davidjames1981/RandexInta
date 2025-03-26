@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import UserProfile, OrderData, MasterInventory
+from .models import UserProfile, OrderData, MasterInventory, TaskConfig
+from django.utils import timezone
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -23,3 +24,23 @@ class MasterInventoryAdmin(admin.ModelAdmin):
     search_fields = ('item', 'description')
     readonly_fields = ('import_timestamp',)
     ordering = ('-import_timestamp',)
+
+@admin.register(TaskConfig)
+class TaskConfigAdmin(admin.ModelAdmin):
+    list_display = ('task_name', 'is_enabled', 'frequency', 'last_run', 'next_run', 'updated_at')
+    list_filter = ('is_enabled', 'task_name')
+    search_fields = ('task_name',)
+    readonly_fields = ('last_run', 'next_run', 'created_at', 'updated_at')
+    ordering = ('task_name',)
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ('task_name',)
+        return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only for new objects
+            # Set initial last_run to now for enabled tasks
+            if obj.is_enabled:
+                obj.last_run = timezone.now()
+        super().save_model(request, obj, form, change)

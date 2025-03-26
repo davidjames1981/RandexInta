@@ -203,9 +203,9 @@
                             <td>{{ item.uom }}</td>
                             <td>
                                 {% if item.status == 0 %}
-                                    <span class="badge bg-warning">Not Sent</span>
+                                    <span class="badge bg-warning">Imported</span>
                                 {% elif item.status == 1 %}
-                                    <span class="badge bg-success">Complete</span>
+                                    <span class="badge bg-success">Sent</span>
                                 {% else %}
                                     <span class="badge bg-danger">Error</span>
                                 {% endif %}
