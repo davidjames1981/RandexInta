@@ -21,31 +21,18 @@
     <!-- Auto-dismiss alerts after 5 seconds -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Get all alert messages
             const alerts = document.querySelectorAll('.alert');
-            
-            // Set timeout to dismiss each alert after 5 seconds
             alerts.forEach(function(alert) {
                 setTimeout(function() {
-                    // Create and dispatch close button click event
                     const closeButton = alert.querySelector('.btn-close');
                     if (closeButton) {
                         closeButton.click();
                     }
-                }, 5000); // 5000 milliseconds = 5 seconds
+                }, 5000);
             });
         });
     </script>
 
-    <!-- Search Box -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <form method="get" class="d-flex">
-                <input type="text" name="search" class="form-control me-2" placeholder="Search by Order Number or Item" value="{{ search_query }}">
-                <button type="submit" class="btn btn-primary">Search</button>
-            </form>
-        </div>
-    </div>
 
     <!-- Order Statistics Row -->
     <div class="row mb-4">
@@ -55,10 +42,10 @@
                     <div class="row">
                         <div class="col-md-6">
                             <h5 class="card-title">Order Statistics</h5>
-                            <p class="card-text mb-1">Total Orders: {{ orders|length }}</p>
-                            <p class="card-text mb-1">Pending Orders: {{ pending_count }}</p>
-                            <p class="card-text mb-1">Sent Orders: {{ sent_count }}</p>
-                            <p class="card-text">Failed Orders: {{ error_count }}</p>
+                            <p class="card-text mb-1">Total Orders: <span id="total-orders">{{ orders|length }}</span></p>
+                            <p class="card-text mb-1">Pending Orders: <span id="pending-orders">{{ pending_count }}</span></p>
+                            <p class="card-text mb-1">Sent Orders: <span id="sent-orders">{{ sent_count }}</span></p>
+                            <p class="card-text">Failed Orders: <span id="error-orders">{{ error_count }}</span></p>
                         </div>
                         <div class="col-md-6">
                             <h5 class="card-title">System Configuration</h5>
@@ -129,7 +116,7 @@
                             <strong>Required Columns:</strong>
                             <ul class="mt-2">
                                 <li>Order Number</li>
-                                <li>Transaction Type</li>
+                                <li>Type</li>
                                 <li>Item</li>
                                 <li>Quantity</li>
                             </ul>
@@ -194,6 +181,15 @@
             </div>
         </div>
     </div>
+    <!-- Search Box -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="get" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Search by Order Number or Item" value="{{ search_query }}">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Orders Table -->
     <div class="card">
@@ -229,13 +225,13 @@
                             </th>
                             <th>
                                 <a href="?sort_by=order_number" class="text-decoration-none text-dark">
-                                    Order Number
+                                    Order
                                     {% if sort_by == 'order_number' %}↑{% elif sort_by == '-order_number' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>
                                 <a href="?sort_by=transaction_type" class="text-decoration-none text-dark">
-                                    Transaction Type
+                                    Type
                                     {% if sort_by == 'transaction_type' %}↑{% elif sort_by == '-transaction_type' %}↓{% endif %}
                                 </a>
                             </th>
@@ -247,13 +243,13 @@
                             </th>
                             <th>
                                 <a href="?sort_by=quantity" class="text-decoration-none text-dark">
-                                    Req Qty
+                                    Req
                                     {% if sort_by == 'quantity' %}↑{% elif sort_by == '-quantity' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>
                                 <a href="?sort_by=actual_qty" class="text-decoration-none text-dark">
-                                    Con Qty
+                                    Conf
                                     {% if sort_by == 'actual_qty' %}↑{% elif sort_by == '-actual_qty' %}↓{% endif %}
                                 </a>
                             </th>
@@ -265,8 +261,14 @@
                             </th>
                             <th>
                                 <a href="?sort_by=processed_at" class="text-decoration-none text-dark">
-                                    Processed At
+                                    Time
                                     {% if sort_by == 'processed_at' %}↑{% elif sort_by == '-processed_at' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort_by=user" class="text-decoration-none text-dark">
+                                    User
+                                    {% if sort_by == 'user' %}↑{% elif sort_by == '-user' %}↓{% endif %}
                                 </a>
                             </th>
                             <th>Error</th>
@@ -296,6 +298,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ order.processed_at|date:"H:i:s" }}</td>
+                            <td>{{ order.user|default:"-" }}</td>
                             <td>{{ order.api_error|default:"" }}</td>
                             <td>
                                 <a href="{% url 'portal:reset_order_status' order.id %}" 
@@ -307,7 +310,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="text-center">No orders found</td>
+                            <td colspan="11" class="text-center">No orders found</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -323,12 +326,12 @@
                     <ul class="pagination mb-0">
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
                             <a class="page-link" href="?page=1&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="First">
-                                <span aria-hidden="true">&laquo;&laquo;</span>
+                                <span aria-hidden="true">««</span>
                             </a>
                         </li>
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ page|add:'-1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
+                                <span aria-hidden="true">«</span>
                             </a>
                         </li>
                         {% if page > 2 %}
@@ -350,12 +353,12 @@
                         {% endif %}
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ page|add:'1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
+                                <span aria-hidden="true">»</span>
                             </a>
                         </li>
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
                             <a class="page-link" href="?page={{ total_pages }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Last">
-                                <span aria-hidden="true">&raquo;&raquo;</span>
+                                <span aria-hidden="true">»»</span>
                             </a>
                         </li>
                     </ul>
@@ -390,7 +393,7 @@ function updateTable() {
         tbody.innerHTML = '';
         
         if (data.orders.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">No orders found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center">No orders found</td></tr>';
             return;
         }
         
@@ -420,6 +423,7 @@ function updateTable() {
                                     '<span class="badge bg-danger">Error</span>'}
                 </td>
                 <td>${new Date(order.processed_at).toLocaleTimeString()}</td>
+                <td>${order.user !== null ? order.user : '-'}</td>
                 <td>${order.api_error || ''}</td>
                 <td>
                     <a href="${resetUrl}" 
@@ -432,8 +436,8 @@ function updateTable() {
             tbody.appendChild(tr);
             
             if (order.sent_status === 0) pendingCount++;
-            else if (order.sent_status === 1) sentCount++;
-            else if (order.sent_status === 99) errorCount++;
+            else if (order.sent_status === 1 || order.sent_status === 2) sentCount++; // Include both Posted and Sent
+            else if (order.sent_status > 3) errorCount++; // Errors are > 3 based on your logic
         });
         
         // Update statistics
@@ -444,6 +448,9 @@ function updateTable() {
         
         // Update last refresh time
         document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+    })
+    .catch(error => {
+        console.error('Error updating table:', error);
     });
 }
 
@@ -456,4 +463,4 @@ updateTable();
 
 <!-- Add Bootstrap Icons CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-{% endblock %} 
+{% endblock %}

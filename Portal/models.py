@@ -26,9 +26,38 @@ class OrderData(models.Model):
     file_name = models.CharField(max_length=255)
     sent_status = models.IntegerField(default=0)
     api_error = models.TextField(null=True, blank=True)
+    user= models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.order_number} - {self.item}"
 
     class Meta:
         db_table = 'order_data'
+
+class MasterInventory(models.Model):
+    # Mandatory fields
+    item = models.CharField(max_length=50, unique=True)
+    description = models.CharField(max_length=255)
+    uom = models.CharField(max_length=10)
+    
+    # Optional custom fields
+    cus1 = models.CharField(max_length=255, null=True, blank=True)
+    cus2 = models.CharField(max_length=255, null=True, blank=True)
+    cus3 = models.CharField(max_length=255, null=True, blank=True)
+    
+    # Import tracking fields
+    import_timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'masterinventory_data'
+        verbose_name = 'Master Inventory'
+        verbose_name_plural = 'Master Inventory'
+        indexes = [
+            models.Index(fields=['item']),
+            models.Index(fields=['status']),
+            models.Index(fields=['import_timestamp'])
+        ]
+    
+    def __str__(self):
+        return f"{self.item} - {self.description}"

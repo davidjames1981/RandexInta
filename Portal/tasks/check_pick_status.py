@@ -49,7 +49,8 @@ def check_pick_status():
                         
                     item_name = record.get('item_name')
                     quantity_confirmed = record.get('quantity_confirmed')
-                    
+                    user = record.get('user')
+
                     if not all([item_name, quantity_confirmed is not None]):
                         logger.warning(f"Incomplete data in record for order {order_number}: {record}")
                         continue
@@ -61,7 +62,8 @@ def check_pick_status():
                         sent_status=1
                     ).update(
                         actual_qty=quantity_confirmed,
-                        sent_status=3  # Mark as picked
+                        sent_status=3,  # Mark as picked
+                        user=user
                     )
                     
                     if updated:

@@ -2,12 +2,14 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-from .models import UserProfile, OrderData
+from .models import UserProfile, OrderData, MasterInventory
 from django.http import JsonResponse
 from django.db.models import Q
 import os
 from dotenv import load_dotenv
 from Portal.utils.logger import general_logger as logger
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
 
 load_dotenv()
 
@@ -57,7 +59,7 @@ def home(request):
             return JsonResponse({
                 'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
                                            'item', 'quantity', 'actual_qty', 'sent_status', 
-                                           'processed_at', 'api_error')),
+                                           'processed_at', 'api_error', 'user')),
                 'pagination': {
                     'page': page,
                     'total_pages': total_pages,
@@ -151,3 +153,98 @@ def reset_order_status(request, order_id):
         messages.error(request, f'An error occurred while resetting the order: {str(e)}')
         
     return redirect('portal:home')
+
+def inventory(request):
+    # Get query parameters
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 50))
+    sort_by = request.GET.get('sort_by', '-import_timestamp')
+    search_query = request.GET.get('search', '')
+
+    # Base queryset
+    queryset = MasterInventory.objects.all()
+
+    # Apply search if provided
+    if search_query:
+        queryset = queryset.filter(
+            Q(item__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+
+    # Apply sorting
+    if sort_by.startswith('-'):
+        queryset = queryset.order_by(sort_by, '-import_timestamp')
+    else:
+        queryset = queryset.order_by(sort_by, 'import_timestamp')
+
+    # Create paginator
+    paginator = Paginator(queryset, page_size)
+    
+    # Ensure page number is valid
+    try:
+        page_obj = paginator.page(page)
+    except:
+        page = 1
+        page_obj = paginator.page(page)
+
+    # Calculate statistics
+    total_records = queryset.count()
+    new_count = queryset.filter(status=0).count()
+    updated_count = queryset.filter(status=1).count()
+    error_count = queryset.filter(status=2).count()
+
+    # Get configuration from environment variables
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT', '5432')
+    watch_folder = os.getenv('WATCH_FOLDER', '')
+    inventory_import_frequency = os.getenv('INVENTORY_IMPORT_FREQUENCY', '300')  # Default to 5 minutes
+
+    context = {
+        'inventory_items': page_obj,
+        'page': page,
+        'page_size': page_size,
+        'page_size_options': [25, 50, 100, 250],
+        'total_pages': paginator.num_pages,
+        'total_records': total_records,
+        'new_count': new_count,
+        'updated_count': updated_count,
+        'error_count': error_count,
+        'sort_by': sort_by,
+        'search_query': search_query,
+        'DB_HOST': db_host,
+        'DB_PORT': db_port,
+        'WATCH_FOLDER': watch_folder,
+        'INVENTORY_IMPORT_FREQUENCY': inventory_import_frequency,
+    }
+
+    # Return JSON response for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        data = {
+            'inventory_items': [{
+                'id': item.id,
+                'item': item.item,
+                'description': item.description,
+                'uom': item.uom,
+                'cus1': item.cus1,
+                'cus2': item.cus2,
+                'cus3': item.cus3,
+                'status': item.status,
+                'import_timestamp': item.import_timestamp.isoformat(),
+            } for item in page_obj],
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': paginator.num_pages,
+                'total_records': total_records,
+            }
+        }
+        return JsonResponse(data)
+
+    return render(request, 'portal/inventory.html', context)
+
+@require_POST
+def reset_inventory_status(request, item_id):
+    inventory_item = get_object_or_404(MasterInventory, id=item_id)
+    inventory_item.status = 0
+    inventory_item.save()
+    return redirect('portal:inventory')

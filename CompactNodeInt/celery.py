@@ -39,6 +39,8 @@ pick_check_frequency = float(os.getenv('PICK_CHECK_FREQUENCY'))
 if not pick_check_frequency:
     raise ValueError("PICK_CHECK_FREQUENCY environment variable is not set")
 
+inventory_import_frequency = float(os.getenv('INVENTORY_IMPORT_FREQUENCY', '300'))  # Default 5 minutes
+
 # Configure the periodic tasks
 app.conf.beat_schedule = {
     'check-excel-files': {
@@ -52,6 +54,10 @@ app.conf.beat_schedule = {
     'check-pick-status': {
         'task': 'Portal.tasks.check_pick_status',
         'schedule': pick_check_frequency,
+    },
+    'process-inventory-files': {
+        'task': 'Portal.tasks.import_inventory.process_inventory_files',
+        'schedule': inventory_import_frequency,
     },
 }
 
@@ -79,6 +85,13 @@ app.conf.result_backend = result_backend
 app.conf.broker_connection_retry = True
 app.conf.broker_connection_retry_on_startup = True
 app.conf.broker_connection_max_retries = 10
+
+# Initialize Django
+import django
+django.setup()
+
+# Import tasks after Django is initialized
+from Portal.tasks import import_order, api_order_creation, check_pick_status, import_inventory
 
 # Auto-discover tasks in all registered Django app configs
 app.autodiscover_tasks(['Portal'])

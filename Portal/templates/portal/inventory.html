@@ -1,0 +1,361 @@
+{% extends "portal/base.html" %}
+{% load portal_filters %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Inventory Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="card-title">Inventory Statistics</h5>
+                            <p class="card-text mb-1">Total Items: <span id="total-items">{{ total_records }}</span></p>
+                            <p class="card-text mb-1">New Items: <span id="new-items">{{ new_count }}</span></p>
+                            <p class="card-text mb-1">Updated Items: <span id="updated-items">{{ updated_count }}</span></p>
+                            <p class="card-text">Error Items: <span id="error-items">{{ error_count }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="card-title">System Configuration</h5>
+                            <p class="card-text mb-1">Database: {{ DB_HOST }}:{{ DB_PORT }}</p>
+                            <p class="card-text mb-1">Watch Folder: {{ WATCH_FOLDER }}/Inventory</p>
+                            <p class="card-text mb-1">Import Interval: {{ INVENTORY_IMPORT_FREQUENCY }} seconds</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Instructions Modal -->
+    <div class="modal fade" id="fileInstructionsModal" tabindex="-1" aria-labelledby="fileInstructionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fileInstructionsModalLabel">Inventory Excel File Instructions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="mb-3">File Requirements:</h6>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item">
+                            <strong>File Format:</strong> Excel files (.xlsx or .xls)
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Required Columns:</strong>
+                            <ul class="mt-2">
+                                <li>Item</li>
+                                <li>Description</li>
+                                <li>UOM</li>
+                            </ul>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Optional Columns:</strong>
+                            <ul class="mt-2">
+                                <li>CUS1</li>
+                                <li>CUS2</li>
+                                <li>CUS3</li>
+                            </ul>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Column Flexibility:</strong>
+                            <ul class="mt-2">
+                                <li>Columns can be in any order</li>
+                                <li>Column names are case-insensitive</li>
+                                <li>Spaces and underscores in column names are supported</li>
+                                <li>Additional columns will be ignored</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h6 class="mb-3">Example Valid Column Headers:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Example 1</th>
+                                    <th>Example 2</th>
+                                    <th>Example 3</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Item</td>
+                                    <td>ITEM</td>
+                                    <td>item</td>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td>DESCRIPTION</td>
+                                    <td>description</td>
+                                </tr>
+                                <tr>
+                                    <td>UOM</td>
+                                    <td>UOM</td>
+                                    <td>uom</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="mb-3">Process Flow:</h6>
+                    <ol class="list-group list-group-numbered mb-4">
+                        <li class="list-group-item">Place your Excel file in the Watch Folder/Inventory</li>
+                        <li class="list-group-item">The system checks for new files every {{ INVENTORY_IMPORT_FREQUENCY }} seconds</li>
+                        <li class="list-group-item">Successfully processed files are moved to the Completed Folder</li>
+                        <li class="list-group-item">Files with errors are moved to the Error Folder</li>
+                    </ol>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="get" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Search by Item or Description" value="{{ search_query }}">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#fileInstructionsModal">
+                File Instructions
+            </button>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 d-inline">Inventory Items</h5>
+                    <span class="text-muted ms-2">(Showing {{ page_size }} of {{ total_records }} records)</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <label for="page-size" class="me-2">Rows per page:</label>
+                        <select id="page-size" class="form-select form-select-sm d-inline-block w-auto">
+                            {% for size in page_size_options %}
+                                <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <small class="text-muted">Last updated: <span id="last-update"></span></small>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="?sort_by=item" class="text-decoration-none text-dark">
+                                    Item
+                                    {% if sort_by == 'item' %}↑{% elif sort_by == '-item' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort_by=description" class="text-decoration-none text-dark">
+                                    Description
+                                    {% if sort_by == 'description' %}↑{% elif sort_by == '-description' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort_by=uom" class="text-decoration-none text-dark">
+                                    UOM
+                                    {% if sort_by == 'uom' %}↑{% elif sort_by == '-uom' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>CUS1</th>
+                            <th>CUS2</th>
+                            <th>CUS3</th>
+                            <th>
+                                <a href="?sort_by=status" class="text-decoration-none text-dark">
+                                    Status
+                                    {% if sort_by == 'status' %}↑{% elif sort_by == '-status' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort_by=import_timestamp" class="text-decoration-none text-dark">
+                                    Last Updated
+                                    {% if sort_by == 'import_timestamp' %}↑{% elif sort_by == '-import_timestamp' %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-table-body">
+                        {% for item in inventory_items %}
+                        <tr>
+                            <td>{{ item.item }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.uom }}</td>
+                            <td>{{ item.cus1|default:"-" }}</td>
+                            <td>{{ item.cus2|default:"-" }}</td>
+                            <td>{{ item.cus3|default:"-" }}</td>
+                            <td>
+                                {% if item.status == 0 %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif item.status == 1 %}
+                                    <span class="badge bg-warning">Modified</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Error</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.import_timestamp|date:"Y-m-d H:i:s" }}</td>
+                            <td>
+                                <a href="{% url 'portal:reset_inventory_status' item.id %}" 
+                                   class="btn btn-sm btn-warning"
+                                   onclick="return confirm('Are you sure you want to reset this item?')">
+                                    Reset
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">No inventory items found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted">
+                    Page {{ page }} of {{ total_pages }} ({{ total_records }} total records)
+                </div>
+                <nav aria-label="Inventory navigation">
+                    <ul class="pagination mb-0">
+                        <!-- First page -->
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="?page=1&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="First">
+                                <span aria-hidden="true">««</span>
+                            </a>
+                        </li>
+                        <!-- Previous page -->
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ page|add:'-1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
+                            </a>
+                        </li>
+                        <!-- Page numbers -->
+                        {% with page_range=total_pages|default:1 %}
+                            {% for p in page_range|rjust:page_range %}
+                                {% if forloop.counter >= page|add:'-2' and forloop.counter <= page|add:'2' %}
+                                    <li class="page-item {% if forloop.counter == page %}active{% endif %}">
+                                        <a class="page-link" href="?page={{ forloop.counter }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}">{{ forloop.counter }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                        <!-- Next page -->
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ page|add:'1' }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Next">
+                                <span aria-hidden="true">»</span>
+                            </a>
+                        </li>
+                        <!-- Last page -->
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ total_pages }}&page_size={{ page_size }}&sort_by={{ sort_by }}&search={{ search_query }}" aria-label="Last">
+                                <span aria-hidden="true">»»</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add event listener for page size change
+document.getElementById('page-size').addEventListener('change', function() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page_size', this.value);
+    url.searchParams.set('page', '1');  // Reset to first page when changing page size
+    window.location.href = url.toString();
+});
+
+function updateTable() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', '{{ page }}');
+    url.searchParams.set('page_size', '{{ page_size }}');
+    
+    fetch(url.toString(), {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('inventory-table-body');
+        tbody.innerHTML = '';
+        
+        if (data.inventory_items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No inventory items found</td></tr>';
+            return;
+        }
+        
+        let newCount = 0;
+        let updatedCount = 0;
+        let errorCount = 0;
+        
+        data.inventory_items.forEach(item => {
+            const tr = document.createElement('tr');
+            const resetUrl = '{% url "portal:reset_inventory_status" 999999 %}'.replace('999999', item.id);
+            tr.innerHTML = `
+                <td>${item.item}</td>
+                <td>${item.description}</td>
+                <td>${item.uom}</td>
+                <td>${item.cus1 || '-'}</td>
+                <td>${item.cus2 || '-'}</td>
+                <td>${item.cus3 || '-'}</td>
+                <td>
+                    ${item.status === 0 ? 
+                        '<span class="badge bg-success">Active</span>' : 
+                        item.status === 1 ? 
+                            '<span class="badge bg-warning">Modified</span>' :
+                            '<span class="badge bg-danger">Error</span>'}
+                </td>
+                <td>${new Date(item.import_timestamp).toLocaleString()}</td>
+                <td>
+                    <a href="${resetUrl}" 
+                       class="btn btn-sm btn-warning"
+                       onclick="return confirm('Are you sure you want to reset this item?')">
+                        Reset
+                    </a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            
+            if (item.status === 0) newCount++;
+            else if (item.status === 1) updatedCount++;
+            else errorCount++;
+        });
+        
+        // Update statistics
+        document.getElementById('total-items').textContent = data.pagination.total_records;
+        document.getElementById('new-items').textContent = newCount;
+        document.getElementById('updated-items').textContent = updatedCount;
+        document.getElementById('error-items').textContent = errorCount;
+        
+        // Update last refresh time
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+    });
+}
+
+// Update table every 30 seconds
+setInterval(updateTable, 30000);
+
+// Initial update
+updateTable();
+</script>
+{% endblock %} 
