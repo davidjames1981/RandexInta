@@ -56,9 +56,19 @@ def process_excel_files():
                 # Convert column names to lowercase for case-insensitive matching
                 df.columns = df.columns.str.lower()
                 
+                # Dictionary to keep track of line numbers for each order
+                order_line_counters = {}
+                
                 # Process each row
                 for index, row in df.iterrows():
                     try:
+                        # Get the order number and initialize/increment line counter
+                        order_number = row['order']
+                        if order_number not in order_line_counters:
+                            order_line_counters[order_number] = 1
+                        current_line_number = order_line_counters[order_number]
+                        order_line_counters[order_number] += 1
+
                         # Get the location value, default to None if missing
                         location_value = row.get('location')
                         # Convert NaN to None to ensure NULL in the database
@@ -74,19 +84,20 @@ def process_excel_files():
 
                         # Map Excel columns to model fields
                         order_data = {
-                            'order_number': row['order'],  # 'order' in Excel -> 'order_number' in model
-                            'transaction_type': row['type'],  # 'type' in Excel -> 'transaction_type' in model
-                            'item': row['item'],  # 'item' in Excel -> 'item' in model
+                            'order_number': order_number,
+                            'transaction_type': row['type'],
+                            'item': row['item'],
                             'quantity': row['quantity'],
-                            'sent_status': 0,  # Initial status
-                            'file_name': file,  # Store the source file name
-                            'wms_location': location_value,  # Use the processed location value
-                            'bin_location': bin_location,  # Set the looked-up bin location
+                            'sent_status': 0,
+                            'file_name': file,
+                            'wms_location': location_value,
+                            'bin_location': bin_location,
+                            'order_line': current_line_number,  # Add the line number
                         }
                         
                         # Create order
                         order = OrderData.objects.create(**order_data)
-                        logger.info(f"Created order: {order.order_number} - {order.item} (Qty: {order.quantity}, Location: {location_value}, Bin: {bin_location})")
+                        logger.info(f"Created order: {order.order_number} - Line {current_line_number} - {order.item} (Qty: {order.quantity}, Location: {location_value}, Bin: {bin_location})")
                         processed_count += 1
                         
                     except KeyError as key_error:

@@ -47,8 +47,8 @@ def check_pick_status():
                 
                 logger.info(f"Received {len(history_data)} history records for order {order_number}")
                 
-                # Use defaultdict to sum up confirmed quantities for each item
-                item_quantities = defaultdict(float)
+                # Dictionary to store confirmed quantities by item and line number
+                line_quantities = defaultdict(float)
                 
                 # Process each history record
                 for record in history_data:
@@ -63,49 +63,54 @@ def check_pick_status():
                         
                     item_name = record.get('item_name')
                     quantity_confirmed = record.get('quantity_confirmed', 0)
+                    line_number = record.get('order_line_number')
                     
-                    if item_name:
-                        item_quantities[item_name] += quantity_confirmed
-                        logger.info(f"Added {quantity_confirmed} to total for {item_name} ({transaction_type})")
+                    if item_name and line_number is not None:
+                        # Create a unique key for each item+line combination
+                        line_key = (item_name, line_number)
+                        line_quantities[line_key] += quantity_confirmed
+                        logger.info(f"Added {quantity_confirmed} to total for {item_name} (Line {line_number}, {transaction_type})")
                 
-                # Update each item with its total confirmed quantity
-                for item_name, total_confirmed in item_quantities.items():
-                    logger.info(f"Processing {transaction_type} order {order_number}, {item_name} with total confirmed quantity: {total_confirmed}")
+                # Update each item line with its confirmed quantity
+                for (item_name, line_number), total_confirmed in line_quantities.items():
+                    logger.info(f"Processing {transaction_type} order {order_number}, {item_name}, Line {line_number} with total confirmed quantity: {total_confirmed}")
                     
-                    # Get the order line to check requested quantity
+                    # Get the specific order line
                     order_line = OrderData.objects.filter(
                         order_number=order_number,
                         item=item_name,
+                        order_line=line_number,  # Match the specific line number
                         transaction_type=transaction_type,
                         sent_status__in=[1, 99]
                     ).first()
                     
                     if not order_line:
-                        logger.warning(f"No matching order found for {transaction_type} order {order_number}, item {item_name}")
+                        logger.warning(f"No matching order found for {transaction_type} order {order_number}, item {item_name}, Line {line_number}")
                         continue
                     
                     # Update status based on quantity comparison    
                     update_data = {'actual_qty': total_confirmed}
                     if total_confirmed >= order_line.quantity:
                         update_data['sent_status'] = 3
-                        logger.info(f"Order {order_number}, item {item_name} completed: requested={order_line.quantity}, confirmed={total_confirmed}")
+                        logger.info(f"Order {order_number}, Line {line_number}, item {item_name} completed: requested={order_line.quantity}, confirmed={total_confirmed}")
                     else:
                         update_data['sent_status'] = 99
-                        logger.info(f"Order {order_number}, item {item_name} still processing: requested={order_line.quantity}, confirmed={total_confirmed}")
+                        logger.info(f"Order {order_number}, Line {line_number}, item {item_name} still processing: requested={order_line.quantity}, confirmed={total_confirmed}")
                     
-                    # Update the order line
+                    # Update the specific order line
                     updated = OrderData.objects.filter(
                         order_number=order_number,
                         item=item_name,
+                        order_line=line_number,  # Match the specific line number
                         transaction_type=transaction_type,
                         sent_status__in=[1, 99]
                     ).update(**update_data)
                     
                     if updated:
-                        logger.info(f"Updated {transaction_type} order {order_number}, item {item_name}: "
+                        logger.info(f"Updated {transaction_type} order {order_number}, Line {line_number}, item {item_name}: "
                                   f"actual_qty={total_confirmed}, status={update_data.get('sent_status', 1)}")
                     else:
-                        logger.warning(f"Failed to update {transaction_type} order {order_number}, item {item_name}")
+                        logger.warning(f"Failed to update {transaction_type} order {order_number}, Line {line_number}, item {item_name}")
                 
             except requests.exceptions.RequestException as e:
                 logger.error(f"API error checking status for {transaction_type} order {order_number}: {str(e)}")

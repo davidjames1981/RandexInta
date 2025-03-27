@@ -30,6 +30,7 @@ class OrderData(models.Model):
     user= models.CharField(max_length=255, null=True, blank=True)
     wms_location = models.CharField(max_length=255, null=True, blank=True)
     bin_location = models.CharField(max_length=255, null=True, blank=True)
+    order_line = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.order_number} - {self.item}"

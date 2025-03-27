@@ -47,10 +47,11 @@ def create_api_orders():
             # Set order_type based on transaction_type
             order_type = 4 if transaction_type == 'PICK' else 3  # 4 for PICK, 3 for PUT
             
+            # Get order lines sorted by order_line to maintain line sequence
             order_lines = OrderData.objects.filter(
                 order_number=order_number,
                 sent_status=0
-            ).order_by('id')
+            ).order_by('order_line')
             
             # Skip if no lines found
             if not order_lines:
@@ -68,16 +69,16 @@ def create_api_orders():
                 "order_lines": []
             }
             
-            # Add order lines with calculated line numbers
-            for index, line in enumerate(order_lines, start=1):
+            # Add order lines using stored order_line number
+            for line in order_lines:
                 order_line = {
-                    "line_number": index,
+                    "line_number": line.order_line,  # Use the stored order_line value
                     "item": line.item,
                     "quantity": line.quantity,
                     "suggested_bin": line.bin_location if line.bin_location else ""  # Empty string if bin_location is NULL
                 }
                 payload["order_lines"].append(order_line)
-                logger.debug(f"Added line {index} to payload: {order_line}")
+                logger.debug(f"Added line {line.order_line} to payload: {order_line}")
             
             # Log the full payload
             logger.info(f"Request Payload for {transaction_type} order {order_number}:")
