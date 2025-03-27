@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, OrderData, MasterInventory, TaskConfig
+from .models import UserProfile, OrderData, MasterInventory, TaskConfig,WarehouseLocation
 from django.utils import timezone
 
 @admin.register(UserProfile)
@@ -44,3 +44,10 @@ class TaskConfigAdmin(admin.ModelAdmin):
             if obj.is_enabled:
                 obj.last_run = timezone.now()
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WarehouseLocation)
+class WarehouseLocationAdmin(admin.ModelAdmin):
+    list_display = ('wms_location', 'cn_bin')  # Columns to display in list view
+    search_fields = ('wms_location', 'cn_bin')  # Enable search on these fields
+    list_filter = ('wms_location',)  # Add filters in the right sidebar

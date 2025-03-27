@@ -1,12 +1,11 @@
 import os
 import pandas as pd
+import numpy as np  # Add this import to handle NaN checks
 from celery import shared_task
 from django.conf import settings
-from ..models import OrderData
+from ..models import OrderData, WarehouseLocation
 import logging
 from datetime import datetime
-
-
 
 # Set up logger
 logger = logging.getLogger('order_import')
@@ -39,6 +38,10 @@ def process_excel_files():
         processed_count = 0
         error_count = 0
         
+        # Create a location lookup dictionary for faster lookups
+        location_lookup = {loc.wms_location: loc.cn_bin for loc in WarehouseLocation.objects.all()}
+        logger.info(f"Loaded {len(location_lookup)} warehouse locations for lookup")
+        
         for file in files:
             file_path = os.path.join(import_folder, file)
             logger.info(f"Processing order file: {file}")
@@ -56,6 +59,19 @@ def process_excel_files():
                 # Process each row
                 for index, row in df.iterrows():
                     try:
+                        # Get the location value, default to None if missing
+                        location_value = row.get('location')
+                        # Convert NaN to None to ensure NULL in the database
+                        if pd.isna(location_value):
+                            location_value = None
+                            bin_location = None
+                        else:
+                            # Preserve the location value and lookup bin location
+                            location_value = str(location_value).strip()  # Ensure string and remove whitespace
+                            bin_location = location_lookup.get(location_value)
+                            if not bin_location:
+                                logger.info(f"No bin location found for WMS location: {location_value}")
+
                         # Map Excel columns to model fields
                         order_data = {
                             'order_number': row['order'],  # 'order' in Excel -> 'order_number' in model
@@ -63,12 +79,14 @@ def process_excel_files():
                             'item': row['item'],  # 'item' in Excel -> 'item' in model
                             'quantity': row['quantity'],
                             'sent_status': 0,  # Initial status
-                            'file_name': file  # Store the source file name
+                            'file_name': file,  # Store the source file name
+                            'wms_location': location_value,  # Use the processed location value
+                            'bin_location': bin_location,  # Set the looked-up bin location
                         }
                         
                         # Create order
                         order = OrderData.objects.create(**order_data)
-                        logger.info(f"Created order: {order.order_number} - {order.item} (Qty: {order.quantity})")
+                        logger.info(f"Created order: {order.order_number} - {order.item} (Qty: {order.quantity}, Location: {location_value}, Bin: {bin_location})")
                         processed_count += 1
                         
                     except KeyError as key_error:
@@ -111,4 +129,4 @@ def process_excel_files():
 # Schedule the task to run every 10 seconds
 @shared_task
 def schedule_file_processing():
-    process_excel_files.delay() 
+    process_excel_files.delay()

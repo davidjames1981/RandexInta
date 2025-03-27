@@ -73,7 +73,8 @@ def create_api_orders():
                 order_line = {
                     "line_number": index,
                     "item": line.item,
-                    "quantity": line.quantity
+                    "quantity": line.quantity,
+                    "suggested_bin": line.bin_location if line.bin_location else ""  # Empty string if bin_location is NULL
                 }
                 payload["order_lines"].append(order_line)
                 logger.debug(f"Added line {index} to payload: {order_line}")

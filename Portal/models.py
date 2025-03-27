@@ -27,7 +27,9 @@ class OrderData(models.Model):
     file_name = models.CharField(max_length=255)
     sent_status = models.IntegerField(default=0)
     api_error = models.TextField(null=True, blank=True)
-    user= models.TextField(null=True, blank=True)
+    user= models.CharField(max_length=255, null=True, blank=True)
+    wms_location = models.CharField(max_length=255, null=True, blank=True)
+    bin_location = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return f"{self.order_number} - {self.item}"
@@ -62,6 +64,24 @@ class MasterInventory(models.Model):
     
     def __str__(self):
         return f"{self.item} - {self.description}"
+
+
+
+# Warehouse location matrix)
+
+class WarehouseLocation(models.Model):
+    id = models.AutoField(primary_key=True)
+    wms_location = models.CharField(max_length=100)
+    cn_bin = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'Portal_warehouse_location'  # Specify table name
+        verbose_name = 'Warehouse Location'
+        verbose_name_plural = 'Warehouse Locations'
+
+    def __str__(self):
+        return f"{self.wms_location} - {self.cn_bin}"
+
 
 class TaskConfig(models.Model):
     TASK_CHOICES = [
