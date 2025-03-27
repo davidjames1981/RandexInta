@@ -19,8 +19,8 @@ def check_pick_status():
     logger.info("Starting pick status check task")
     
     try:
-        # Get all orders with sent_status=1 (sent but not yet picked)
-        sent_orders = OrderData.objects.filter(sent_status=1).values('order_number', 'transaction_type').distinct()
+        # Get all orders with sent_status=1 or 99 (sent but not yet picked)
+        sent_orders = OrderData.objects.filter(sent_status__in=[1, 99]).values('order_number', 'transaction_type').distinct()
         
         if not sent_orders:
             logger.info("No sent orders found to check")
@@ -52,12 +52,13 @@ def check_pick_status():
                 
                 # Process each history record
                 for record in history_data:
-                    # Check if order_type matches transaction_type
+                    # Check if order_type matches transaction_type and history_type is 1
                     order_type = record.get('order_type')
+                    history_type = record.get('history_type')
                     expected_order_type = 4 if transaction_type == 'PICK' else 3
                     
-                    if order_type != expected_order_type:
-                        logger.debug(f"Skipping record with mismatched order_type: {order_type} (expected {expected_order_type})")
+                    if order_type != expected_order_type or history_type != 1:
+                        logger.debug(f"Skipping record with mismatched order_type: {order_type} (expected {expected_order_type}) or history_type: {history_type} (expected 1)")
                         continue
                         
                     item_name = record.get('item_name')
@@ -69,24 +70,42 @@ def check_pick_status():
                 
                 # Update each item with its total confirmed quantity
                 for item_name, total_confirmed in item_quantities.items():
-                    logger.info(f"Updating {transaction_type} order {order_number}, {item_name} with total confirmed quantity: {total_confirmed}")
+                    logger.info(f"Processing {transaction_type} order {order_number}, {item_name} with total confirmed quantity: {total_confirmed}")
                     
-                    # Update the order line with actual quantity
+                    # Get the order line to check requested quantity
+                    order_line = OrderData.objects.filter(
+                        order_number=order_number,
+                        item=item_name,
+                        transaction_type=transaction_type,
+                        sent_status__in=[1, 99]
+                    ).first()
+                    
+                    if not order_line:
+                        logger.warning(f"No matching order found for {transaction_type} order {order_number}, item {item_name}")
+                        continue
+                    
+                    # Update status based on quantity comparison    
+                    update_data = {'actual_qty': total_confirmed}
+                    if total_confirmed >= order_line.quantity:
+                        update_data['sent_status'] = 3
+                        logger.info(f"Order {order_number}, item {item_name} completed: requested={order_line.quantity}, confirmed={total_confirmed}")
+                    else:
+                        update_data['sent_status'] = 99
+                        logger.info(f"Order {order_number}, item {item_name} still processing: requested={order_line.quantity}, confirmed={total_confirmed}")
+                    
+                    # Update the order line
                     updated = OrderData.objects.filter(
                         order_number=order_number,
                         item=item_name,
                         transaction_type=transaction_type,
-                        sent_status=1
-                    ).update(
-                        actual_qty=total_confirmed,
-                        sent_status=3  # Mark as picked/put
-                    )
+                        sent_status__in=[1, 99]
+                    ).update(**update_data)
                     
                     if updated:
                         logger.info(f"Updated {transaction_type} order {order_number}, item {item_name}: "
-                                  f"actual_qty={total_confirmed}, status=3")
+                                  f"actual_qty={total_confirmed}, status={update_data.get('sent_status', 1)}")
                     else:
-                        logger.warning(f"No matching order found for {transaction_type} order {order_number}, item {item_name}")
+                        logger.warning(f"Failed to update {transaction_type} order {order_number}, item {item_name}")
                 
             except requests.exceptions.RequestException as e:
                 logger.error(f"API error checking status for {transaction_type} order {order_number}: {str(e)}")

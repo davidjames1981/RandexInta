@@ -163,7 +163,7 @@
                                 {% elif order.sent_status == 3 %}
                                     <span class="badge bg-success">Complete</span>
                                 {% elif order.sent_status == 99 %}
-                                    <span class="badge bg-danger">Error</span>
+                                    <span class="badge bg-info">Processing</span>
                                 {% endif %}
                             </td>
                             <td>{{ order.processed_at|date:"H:i:s"|default:"-" }}</td>
@@ -350,6 +350,7 @@ function updateTable() {
         let importedCount = 0;
         let sentCount = 0;
         let completeCount = 0;
+        let processingCount = 0;
         let errorCount = 0;
         
         data.orders.forEach(order => {
@@ -370,7 +371,7 @@ function updateTable() {
                             order.sent_status === 3 ?
                                 '<span class="badge bg-success">Complete</span>' :
                                 order.sent_status === 99 ?
-                                    '<span class="badge bg-danger">Error</span>' :
+                                    '<span class="badge bg-info">Processing</span>' :
                                     '<span class="badge bg-secondary">Unknown</span>'}
                 </td>
                 <td>${order.processed_at ? new Date(order.processed_at).toLocaleTimeString() : '-'}</td>
@@ -389,13 +390,13 @@ function updateTable() {
             if (order.sent_status === 0 || order.sent_status === null) importedCount++;
             else if (order.sent_status === 1) sentCount++;
             else if (order.sent_status === 3) completeCount++;
-            else if (order.sent_status === 99) errorCount++;
+            else if (order.sent_status === 99) processingCount++;
         });
         
         // Update statistics
         document.getElementById('total-orders').textContent = data.pagination.total_records;
         document.getElementById('pending-orders').textContent = importedCount;
-        document.getElementById('sent-orders').textContent = sentCount + completeCount;
+        document.getElementById('sent-orders').textContent = sentCount + processingCount + completeCount;
         document.getElementById('failed-orders').textContent = errorCount;
         
         // Update last refresh time
