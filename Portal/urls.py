@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from .admin import portal_admin_site
 
 app_name = 'portal'
 
@@ -13,4 +14,5 @@ urlpatterns = [
     path('reset-order/<int:order_id>/', views.reset_order_status, name='reset_order_status'),
     path('inventory/', views.inventory, name='inventory'),
     path('reset_inventory_status/<int:item_id>/', views.reset_inventory_status, name='reset_inventory_status'),
+    path('settings/', portal_admin_site.urls),
 ] 

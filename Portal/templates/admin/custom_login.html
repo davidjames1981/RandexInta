@@ -1,0 +1,92 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    :root {
+        --primary: #2c3e50;
+        --secondary: #34495e;
+        --accent: #3498db;
+        --primary-fg: #fff;
+    }
+
+    body.login {
+        background: #f5f5f5;
+    }
+
+    .login #header {
+        background: var(--primary);
+        color: var(--primary-fg);
+        height: auto;
+        padding: 15px 20px;
+    }
+
+    .login #header h1 {
+        font-size: 24px;
+        margin: 0;
+        padding: 5px 0;
+    }
+
+    .login #container {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 100px auto;
+        max-width: 400px;
+        padding: 26px;
+    }
+
+    .login #content {
+        padding: 20px;
+    }
+
+    .form-row {
+        padding: 10px 0;
+    }
+
+    .form-row label {
+        display: block;
+        padding: 0 0 8px;
+        color: var(--primary);
+        font-weight: bold;
+    }
+
+    .form-row input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .submit-row {
+        padding: 20px 0 0;
+        margin: 0;
+        text-align: center;
+    }
+
+    .submit-row input {
+        background: var(--accent);
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        color: var(--primary-fg);
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+    }
+
+    .submit-row input:hover {
+        background: #2980b9;
+    }
+
+    .errornote {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        color: #721c24;
+        padding: 10px;
+        margin: 0 0 20px;
+    }
+</style>
+{% endblock %} 

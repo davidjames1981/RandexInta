@@ -5,8 +5,12 @@ from Portal.models import OrderData
 from dotenv import load_dotenv
 from Portal.utils.logger import general_logger as logger
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 load_dotenv()
+
+# Number of days to wait before marking status 99 records as complete
+TIMEOUT_DAYS = 1  # Adjust this value as needed
 
 @shared_task(name='Portal.tasks.check_pick_status')
 def check_pick_status():
@@ -14,13 +18,31 @@ def check_pick_status():
     Task to check pick status from API for orders that have been sent (status=1)
     Updates actual_qty and status=3 when pick data is found
     Handles both PUT (order_type=3) and PICK (order_type=4) orders
+    Also handles timeout for records stuck in status 99
     """
     logger.info("="*80)
     logger.info("Starting pick status check task")
     
     try:
+        # Calculate the timeout date
+        timeout_date = datetime.now() - timedelta(days=TIMEOUT_DAYS)
+        
+        # First, handle timeout for status 99 records
+        timeout_orders = OrderData.objects.filter(
+            sent_status=99,
+            inserted_date__lt=timeout_date
+        )
+        
+        if timeout_orders.exists():
+            logger.info(f"Found {timeout_orders.count()} orders that have timed out after {TIMEOUT_DAYS} days")
+            timeout_orders.update(sent_status=3)
+            logger.info("Updated timed out orders to status 3")
+        
         # Get all orders with sent_status=1 or 99 (sent but not yet picked)
-        sent_orders = OrderData.objects.filter(sent_status__in=[1, 99]).values('order_number', 'transaction_type').distinct()
+        sent_orders = OrderData.objects.filter(
+            sent_status__in=[1, 99],
+            inserted_date__gte=timeout_date  # Only check orders within the timeout period
+        ).values('order_number', 'transaction_type').distinct()
         
         if not sent_orders:
             logger.info("No sent orders found to check")
