@@ -9,7 +9,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 import re
 
-# Set up logger
+# Set up logger with the exact name that matches the logging config
 logger = logging.getLogger('db_order_import')
 
 def parse_db_url(db_url):

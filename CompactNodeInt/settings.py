@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from .logging_config import get_logging_config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -231,13 +232,10 @@ LOGIN_REDIRECT_URL = 'portal:home'
 LOGIN_URL = 'portal:login'
 LOGOUT_REDIRECT_URL = 'portal:login'
 
-# File Paths
+# File Paths - Only use watch folder structure
 WATCH_FOLDER = os.getenv('WATCH_FOLDER')
-COMPLETED_FOLDER = os.getenv('COMPLETED_FOLDER')
-ERROR_FOLDER = os.getenv('ERROR_FOLDER')
-LOG_FOLDER = os.getenv('LOG_FOLDER')
-IMPORT_FOLDER = os.getenv('WATCH_FOLDER')  # Use WATCH_FOLDER for imports
-PROCESSED_FOLDER = os.getenv('COMPLETED_FOLDER')  # Use COMPLETED_FOLDER for processed files
+if not WATCH_FOLDER:
+    raise ValueError("WATCH_FOLDER environment variable is not set")
 
 # API Configuration
 API_HOST = os.getenv('API_HOST')
@@ -245,8 +243,5 @@ if not API_HOST:
     print("Warning: API_HOST not set in environment")
     API_HOST = 'http://localhost:8000'  # Default value
 
-# Import logging configuration
-from Portal.logging_config import LOGGING
-
-# Merge logging configuration
-LOGGING = LOGGING
+# Logging Configuration
+LOGGING = get_logging_config()

@@ -7,26 +7,31 @@ from django.utils import timezone
 from ..models import OrderData, WarehouseLocation
 import logging
 from datetime import datetime
+from ..utils.path_utils import get_watch_path
 
 # Set up logger
-logger = logging.getLogger('order_import')
+logger = logging.getLogger('excel_order_import')
 
 @shared_task(name='Portal.tasks.import_order.process_excel_files')
 def process_excel_files():
-    """Process Excel files from the specified folder"""
+    """Process Excel files from the watch folder"""
     try:
         logger.info("="*80)
-        logger.info("Starting order file processing task")
+        logger.info("Starting Excel order import task")
+
+        # Get folder paths using the utility function
+        watch_folder = get_watch_path(os.getenv('ORDERS_IMPORT_FOLDER'))
+        processed_folder = get_watch_path(os.getenv('PROCESSED_FOLDER'))
+        error_folder = get_watch_path(os.getenv('ERROR_FOLDER'))
+
+        logger.info(f"Looking for files in: {watch_folder}")
         
-        import_folder = os.path.join(settings.WATCH_FOLDER, 'Orders')
-        logger.info(f"Looking for files in: {import_folder}")
-        
-        if not os.path.exists(import_folder):
-            logger.warning(f"Import folder does not exist: {import_folder}")
+        if not os.path.exists(watch_folder):
+            logger.warning(f"Import folder does not exist: {watch_folder}")
             return "Import folder does not exist"
 
         # Get list of Excel files
-        all_files = os.listdir(import_folder)
+        all_files = os.listdir(watch_folder)
         logger.info(f"All files in directory: {all_files}")
         
         files = [f for f in all_files if f.endswith(('.xlsx', '.xls'))]
@@ -44,7 +49,7 @@ def process_excel_files():
         logger.info(f"Loaded {len(location_lookup)} warehouse locations for lookup")
         
         for file in files:
-            file_path = os.path.join(import_folder, file)
+            file_path = os.path.join(watch_folder, file)
             logger.info(f"Processing order file: {file}")
             logger.info(f"Full file path: {file_path}")
             
@@ -114,7 +119,6 @@ def process_excel_files():
                         error_count += 1
                 
                 # Move file to processed folder
-                processed_folder = os.path.join(settings.COMPLETED_FOLDER, 'Orders')
                 os.makedirs(processed_folder, exist_ok=True)
                 processed_path = os.path.join(processed_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 logger.info(f"Moving file from {file_path} to {processed_path}")
@@ -125,7 +129,6 @@ def process_excel_files():
                 logger.error(f"Error processing file {file}: {str(file_error)}")
                 logger.exception("Full traceback:")
                 # Move file to error folder
-                error_folder = os.path.join(settings.ERROR_FOLDER, 'Orders')
                 os.makedirs(error_folder, exist_ok=True)
                 error_path = os.path.join(error_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 os.rename(file_path, error_path)
@@ -136,7 +139,7 @@ def process_excel_files():
         return f"Processed {processed_count} orders with {error_count} errors"
         
     except Exception as e:
-        logger.error(f"Critical error in process_excel_files: {str(e)}")
+        logger.error(f"Critical error in process_excel_files task: {str(e)}")
         logger.exception("Full traceback:")
         return f"Error: {str(e)}"
 

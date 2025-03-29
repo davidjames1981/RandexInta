@@ -1,13 +1,17 @@
 import os
+import logging
 import requests
 from celery import shared_task
 from Portal.models import OrderData
 from dotenv import load_dotenv
-from Portal.utils.logger import general_logger as logger
 from collections import defaultdict
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 load_dotenv()
+
+# Set up logger
+logger = logging.getLogger('api_check_status')
 
 # Number of days to wait before marking status 99 records as complete
 TIMEOUT_DAYS = 1  # Adjust this value as needed

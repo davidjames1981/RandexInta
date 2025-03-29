@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-      - ./Files:/app/Files
+      - ./RandexInt/Watchfolder:/app/RandexInt/Watchfolder
     env_file:
       - .env
     depends_on:
@@ -26,7 +26,7 @@ services:
     command: celery -A CompactNodeInt worker -l INFO
     volumes:
       - .:/app
-      - ./Files:/app/Files
+      - ./RandexInt/Watchfolder:/app/RandexInt/Watchfolder
     env_file:
       - .env
     depends_on:
@@ -37,7 +37,7 @@ services:
     command: celery -A CompactNodeInt beat -l INFO
     volumes:
       - .:/app
-      - ./Files:/app/Files
+      - ./RandexInt/Watchfolder:/app/RandexInt/Watchfolder
     env_file:
       - .env
     depends_on:
@@ -45,4 +45,5 @@ services:
       - celery
 
 volumes:
-  redis_data: 
+  redis_data:
+  watchfolder_data: 
