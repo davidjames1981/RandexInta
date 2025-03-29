@@ -38,7 +38,7 @@ class OrderData(models.Model):
         return f"{self.order_number} - {self.item}"
 
     class Meta:
-        db_table = 'order_data'
+        db_table = 'Portal_order_data'
 
 class MasterInventory(models.Model):
     # Mandatory fields
@@ -56,7 +56,7 @@ class MasterInventory(models.Model):
     status = models.IntegerField(default=0)
     
     class Meta:
-        db_table = 'masterinventory_data'
+        db_table = 'Portal_masterinventory_data'
         verbose_name = 'Master Inventory'
         verbose_name_plural = 'Master Inventory'
         indexes = [
@@ -88,12 +88,12 @@ class WarehouseLocation(models.Model):
 
 class TaskConfig(models.Model):
     TASK_CHOICES = [
-        ('Portal.tasks.import_order.process_excel_files', 'Process Excel Files'),
-        ('Portal.tasks.api_order_creation.create_api_orders', 'Create API Orders'),
-        ('Portal.tasks.check_pick_status', 'Check Pick Status'),
-        ('Portal.tasks.import_inventory.process_inventory_files', 'Process Inventory Files'),
-        ('Portal.tasks.api_inventory.api_inventory_creation', 'Create Inventory API'),
-        ('Portal.tasks.export_order.export_completed_orders', 'Excel Order Export'),
+        ('Portal.tasks.import_order.process_excel_files', 'Excel - Order File Import'),
+        ('Portal.tasks.api_order_creation.create_api_orders', 'API - Create Orders'),
+        ('Portal.tasks.check_pick_status', 'API - Check Order Status'),
+        ('Portal.tasks.import_inventory.process_inventory_files', 'Excel - Inventory File Import'),
+        ('Portal.tasks.api_inventory.api_inventory_creation', 'API - Create Inventory API'),
+        ('Portal.tasks.export_order.export_completed_orders', 'Excel - Order Export'),
     ]
 
     task_name = models.CharField(max_length=255, choices=TASK_CHOICES, unique=True)
