@@ -36,7 +36,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy project files
 COPY . .
 
 # Create necessary directories
@@ -45,5 +45,5 @@ RUN mkdir -p /app/Files/Completed /app/Files/Error /app/Files/Logs
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "CompactNodeInt.wsgi:application"] 
+# Run the application with environment variables from .env
+CMD ["sh", "-c", "python manage.py migrate && gunicorn --bind 0.0.0.0:8000 CompactNodeInt.wsgi:application"] 
