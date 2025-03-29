@@ -16,7 +16,7 @@ TIMEOUT_DAYS = 1  # Adjust this value as needed
 def check_pick_status():
     """
     Task to check pick status from API for orders that have been sent (status=1)
-    Updates actual_qty and status=3 when pick data is found
+    Updates actual_qty, shortage_qty and status based on confirmed/shortage quantities
     Handles both PUT (order_type=3) and PICK (order_type=4) orders
     Also handles timeout for records stuck in status 99
     """
@@ -69,39 +69,49 @@ def check_pick_status():
                 
                 logger.info(f"Received {len(history_data)} history records for order {order_number}")
                 
-                # Dictionary to store confirmed quantities by item and line number
-                line_quantities = defaultdict(float)
+                # Dictionary to store quantities by item and line number
+                line_data = defaultdict(lambda: {'confirmed': 0, 'shortage': 0, 'latest_shortage_id': 0})
                 
                 # Process each history record
                 for record in history_data:
-                    # Check if order_type matches transaction_type and history_type is 1
                     order_type = record.get('order_type')
                     history_type = record.get('history_type')
                     expected_order_type = 4 if transaction_type == 'PICK' else 3
                     
-                    if order_type != expected_order_type or history_type != 1:
-                        logger.debug(f"Skipping record with mismatched order_type: {order_type} (expected {expected_order_type}) or history_type: {history_type} (expected 1)")
+                    # Skip records that don't match our order type or aren't confirmed/shortage
+                    if order_type != expected_order_type or history_type not in [1, 5]:
+                        logger.debug(f"Skipping record with mismatched order_type: {order_type} (expected {expected_order_type}) or history_type: {history_type}")
                         continue
                         
                     item_name = record.get('item_name')
-                    quantity_confirmed = record.get('quantity_confirmed', 0)
                     line_number = record.get('order_line_number')
+                    record_id = record.get('id', 0)
                     
                     if item_name and line_number is not None:
-                        # Create a unique key for each item+line combination
                         line_key = (item_name, line_number)
-                        line_quantities[line_key] += quantity_confirmed
-                        logger.info(f"Added {quantity_confirmed} to total for {item_name} (Line {line_number}, {transaction_type})")
+                        if history_type == 1:
+                            # For confirmed picks - sum up the quantities
+                            quantity_confirmed = record.get('quantity_confirmed', 0)
+                            line_data[line_key]['confirmed'] += quantity_confirmed
+                            logger.info(f"Added confirmed quantity {quantity_confirmed} for {item_name} (Line {line_number}), total now: {line_data[line_key]['confirmed']}")
+                        elif history_type == 5:
+                            # For shortages - take the most recent one
+                            if record_id > line_data[line_key]['latest_shortage_id']:
+                                shortage_qty = record.get('quantity_requested', 0)
+                                line_data[line_key]['shortage'] = shortage_qty
+                                line_data[line_key]['latest_shortage_id'] = record_id
+                                logger.info(f"Updated shortage quantity to {shortage_qty} for {item_name} (Line {line_number}) from record {record_id}")
                 
-                # Update each item line with its confirmed quantity
-                for (item_name, line_number), total_confirmed in line_quantities.items():
-                    logger.info(f"Processing {transaction_type} order {order_number}, {item_name}, Line {line_number} with total confirmed quantity: {total_confirmed}")
+                # Update each item line with its quantities
+                for (item_name, line_number), quantities in line_data.items():
+                    logger.info(f"Processing {transaction_type} order {order_number}, {item_name}, Line {line_number}")
+                    logger.info(f"Final quantities - Total Confirmed: {quantities['confirmed']}, Latest Shortage: {quantities['shortage']}")
                     
                     # Get the specific order line
                     order_line = OrderData.objects.filter(
                         order_number=order_number,
                         item=item_name,
-                        order_line=line_number,  # Match the specific line number
+                        order_line=line_number,
                         transaction_type=transaction_type,
                         sent_status__in=[1, 99]
                     ).first()
@@ -110,29 +120,42 @@ def check_pick_status():
                         logger.warning(f"No matching order found for {transaction_type} order {order_number}, item {item_name}, Line {line_number}")
                         continue
                     
-                    # Update status based on quantity comparison    
-                    update_data = {'actual_qty': total_confirmed}
-                    if total_confirmed >= order_line.quantity:
+                    # Update data based on quantities
+                    update_data = {
+                        'actual_qty': quantities['confirmed'],
+                        'shortage_qty': quantities['shortage']
+                    }
+                    
+                    # Determine status based on confirmed and shortage quantities
+                    if quantities['confirmed'] == order_line.quantity:
+                        # Quantities match exactly
                         update_data['sent_status'] = 3
-                        logger.info(f"Order {order_number}, Line {line_number}, item {item_name} completed: requested={order_line.quantity}, confirmed={total_confirmed}")
+                        logger.info(f"Order completed - exact match: requested={order_line.quantity}, confirmed={quantities['confirmed']}")
+                    elif quantities['shortage'] > 0:
+                        # Have shortage record - mark as complete
+                        update_data['sent_status'] = 3
+                        logger.info(f"Order completed with shortage: confirmed={quantities['confirmed']}, shortage={quantities['shortage']}")
                     else:
+                        # Still processing
                         update_data['sent_status'] = 99
-                        logger.info(f"Order {order_number}, Line {line_number}, item {item_name} still processing: requested={order_line.quantity}, confirmed={total_confirmed}")
+                        logger.info(f"Order still processing: requested={order_line.quantity}, confirmed={quantities['confirmed']}")
                     
                     # Update the specific order line
                     updated = OrderData.objects.filter(
                         order_number=order_number,
                         item=item_name,
-                        order_line=line_number,  # Match the specific line number
+                        order_line=line_number,
                         transaction_type=transaction_type,
                         sent_status__in=[1, 99]
                     ).update(**update_data)
                     
                     if updated:
-                        logger.info(f"Updated {transaction_type} order {order_number}, Line {line_number}, item {item_name}: "
-                                  f"actual_qty={total_confirmed}, status={update_data.get('sent_status', 1)}")
+                        logger.info(f"Updated {transaction_type} order {order_number}, Line {line_number}: "
+                                  f"actual_qty={update_data['actual_qty']}, "
+                                  f"shortage_qty={update_data['shortage_qty']}, "
+                                  f"status={update_data['sent_status']}")
                     else:
-                        logger.warning(f"Failed to update {transaction_type} order {order_number}, Line {line_number}, item {item_name}")
+                        logger.warning(f"Failed to update {transaction_type} order {order_number}, Line {line_number}")
                 
             except requests.exceptions.RequestException as e:
                 logger.error(f"API error checking status for {transaction_type} order {order_number}: {str(e)}")
