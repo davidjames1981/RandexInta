@@ -59,7 +59,8 @@ def home(request):
             return JsonResponse({
                 'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
                                            'item', 'quantity', 'actual_qty', 'sent_status', 
-                                           'processed_at', 'api_error', 'user')),
+                                           'processed_at', 'api_error', 'user', 'order_line',
+                                           'shortage_qty')),
                 'pagination': {
                     'page': page,
                     'total_pages': total_pages,
@@ -83,7 +84,8 @@ def home(request):
         context = {
             'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
                                    'item', 'quantity', 'actual_qty', 'sent_status', 
-                                   'processed_at', 'api_error')),
+                                   'processed_at', 'api_error', 'user', 'order_line',
+                                   'shortage_qty')),
             'pending_count': pending_count,
             'sent_count': sent_count,
             'error_count': error_count,

@@ -104,17 +104,12 @@
                     <thead>
                         <tr>
                             <th>
-                                <a href="?sort_by=id" class="text-decoration-none text-dark">
-                                    ID
-                                    {% if sort_by == 'id' %}↑{% elif sort_by == '-id' %}↓{% endif %}
-                                </a>
-                            </th>
-                            <th>
                                 <a href="?sort_by=order" class="text-decoration-none text-dark">
                                     Order
                                     {% if sort_by == 'order' %}↑{% elif sort_by == '-order' %}↓{% endif %}
                                 </a>
                             </th>
+                            <th>Line</th>
                             <th>
                                 <a href="?sort_by=type" class="text-decoration-none text-dark">
                                     Type
@@ -129,6 +124,7 @@
                             </th>
                             <th>Req</th>
                             <th>Conf</th>
+                            <th>Short</th>
                             <th>
                                 <a href="?sort_by=status" class="text-decoration-none text-dark">
                                     Status
@@ -143,18 +139,18 @@
                             </th>
                             <th>User</th>
                             <th>Error</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="orders-table-body">
                         {% for order in orders %}
                         <tr>
-                            <td>{{ order.id }}</td>
                             <td>{{ order.order_number|default:"-" }}</td>
+                            <td>{{ order.order_line|default:"-" }}</td>
                             <td>{{ order.transaction_type|default:"-" }}</td>
                             <td>{{ order.item|default:"-" }}</td>
                             <td>{{ order.quantity|default:"-" }}</td>
                             <td>{{ order.actual_qty|default:"-" }}</td>
+                            <td>{{ order.shortage_qty|default:"-" }}</td>
                             <td>
                                 {% if order.sent_status == 0 or order.sent_status == None %}
                                     <span class="badge bg-secondary">Imported</span>
@@ -162,19 +158,30 @@
                                     <span class="badge bg-warning">Sent</span>
                                 {% elif order.sent_status == 3 %}
                                     <span class="badge bg-success">Complete</span>
+                                {% elif order.sent_status == 4 %}
+                                    <span class="badge bg-primary">Exported</span>
                                 {% elif order.sent_status == 99 %}
                                     <span class="badge bg-info">Processing</span>
                                 {% endif %}
                             </td>
                             <td>{{ order.processed_at|date:"H:i:s"|default:"-" }}</td>
                             <td>{{ order.user|default:"-" }}</td>
-                            <td>{{ order.api_error|default:"-" }}</td>
                             <td>
-                                <a href="{% url 'portal:reset_order_status' order.id %}" 
-                                   class="btn btn-sm btn-warning"
-                                   onclick="return confirm('Are you sure you want to reset this order?')">
-                                    Reset
-                                </a>
+                                {% if order.api_error %}
+                                    <button type="button" 
+                                            class="btn btn-link p-0 text-danger" 
+                                            data-bs-toggle="popover" 
+                                            data-bs-trigger="click"
+                                            data-bs-placement="left"
+                                            data-bs-html="true"
+                                            data-bs-content="{{ order.api_error|escape }}"
+                                            title="Error Details">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                        <small class="text-danger">Error</small>
+                                    </button>
+                                {% else %}
+                                    -
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
@@ -362,12 +369,13 @@ function updateTable() {
             const tr = document.createElement('tr');
             const resetUrl = '{% url "portal:reset_order_status" 999999 %}'.replace('999999', order.id);
             tr.innerHTML = `
-                <td>${order.id}</td>
                 <td>${order.order_number || '-'}</td>
+                <td>${order.order_line || '-'}</td>
                 <td>${order.transaction_type || '-'}</td>
                 <td>${order.item || '-'}</td>
                 <td>${order.quantity || '-'}</td>
                 <td>${order.actual_qty || '-'}</td>
+                <td>${order.shortage_qty || '-'}</td>
                 <td>
                     ${order.sent_status === 0 || order.sent_status === null ? 
                         '<span class="badge bg-secondary">Imported</span>' : 
@@ -375,26 +383,41 @@ function updateTable() {
                             '<span class="badge bg-warning">Sent</span>' :
                             order.sent_status === 3 ?
                                 '<span class="badge bg-success">Complete</span>' :
-                                order.sent_status === 99 ?
-                                    '<span class="badge bg-info">Processing</span>' :
-                                    '<span class="badge bg-secondary">Unknown</span>'}
+                                order.sent_status === 4 ?
+                                    '<span class="badge bg-primary">Exported</span>' :
+                                    order.sent_status === 99 ?
+                                        '<span class="badge bg-info">Processing</span>' :
+                                        '<span class="badge bg-secondary">Unknown</span>'}
                 </td>
                 <td>${order.processed_at ? new Date(order.processed_at).toLocaleTimeString() : '-'}</td>
                 <td>${order.user || '-'}</td>
-                <td>${order.api_error || '-'}</td>
                 <td>
-                    <a href="${resetUrl}" 
-                       class="btn btn-sm btn-warning"
-                       onclick="return confirm('Are you sure you want to reset this order?')">
-                        Reset
-                    </a>
+                    ${order.api_error ? 
+                        `<button type="button" 
+                                class="btn btn-link p-0 text-danger" 
+                                data-bs-toggle="popover" 
+                                data-bs-trigger="click"
+                                data-bs-placement="left"
+                                data-bs-html="true"
+                                data-bs-content="${order.api_error.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}"
+                                title="Error Details">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <small class="text-danger">Error</small>
+                        </button>` : 
+                        '-'}
                 </td>
             `;
             tbody.appendChild(tr);
             
+            // Initialize popovers for the new row
+            tr.querySelectorAll('[data-bs-toggle="popover"]').forEach(popover => {
+                new bootstrap.Popover(popover);
+            });
+            
             if (order.sent_status === 0 || order.sent_status === null) importedCount++;
             else if (order.sent_status === 1) sentCount++;
             else if (order.sent_status === 3) completeCount++;
+            else if (order.sent_status === 4) completeCount++;
             else if (order.sent_status === 99) processingCount++;
         });
         
@@ -415,10 +438,34 @@ setInterval(updateTable, 30000);
 // Initial update
 updateTable();
 
-// Initialize tooltips
-var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl)
+// Initialize all popovers with better configuration
+document.addEventListener('DOMContentLoaded', function() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl, {
+            container: 'body',
+            html: true,
+            sanitize: false,
+            trigger: 'click',
+            placement: 'left'
+        });
+    });
+
+    // Close other popovers when a new one is opened
+    document.body.addEventListener('click', function (e) {
+        if (e.target && (e.target.getAttribute('data-bs-toggle') === 'popover' || e.target.parentElement.getAttribute('data-bs-toggle') === 'popover')) {
+            popoverList.forEach(function (popover) {
+                if (popover._element !== e.target && popover._element !== e.target.parentElement) {
+                    popover.hide();
+                }
+            });
+        } else {
+            // Close all popovers when clicking outside
+            popoverList.forEach(function (popover) {
+                popover.hide();
+            });
+        }
+    });
 });
 </script>
 {% endblock %}

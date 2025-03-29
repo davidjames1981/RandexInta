@@ -93,6 +93,7 @@ class TaskConfig(models.Model):
         ('Portal.tasks.check_pick_status', 'Check Pick Status'),
         ('Portal.tasks.import_inventory.process_inventory_files', 'Process Inventory Files'),
         ('Portal.tasks.api_inventory.api_inventory_creation', 'Create Inventory API'),
+        ('Portal.tasks.export_order.export_completed_orders', 'Excel Order Export'),
     ]
 
     task_name = models.CharField(max_length=255, choices=TASK_CHOICES, unique=True)
