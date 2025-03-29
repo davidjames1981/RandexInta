@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np  # Add this import to handle NaN checks
 from celery import shared_task
 from django.conf import settings
+from django.utils import timezone
 from ..models import OrderData, WarehouseLocation
 import logging
 from datetime import datetime
@@ -92,7 +93,8 @@ def process_excel_files():
                             'file_name': file,
                             'wms_location': location_value,
                             'bin_location': bin_location,
-                            'order_line': current_line_number,  # Add the line number
+                            'order_line': current_line_number,
+                            'processed_at': timezone.now(),  # Use timezone-aware datetime
                         }
                         
                         # Create order
@@ -108,12 +110,13 @@ def process_excel_files():
                     except Exception as row_error:
                         logger.error(f"Error processing row {index} in file {file}: {str(row_error)}")
                         logger.error(f"Row data: {row.to_dict()}")
+                        logger.exception("Full traceback:")
                         error_count += 1
                 
                 # Move file to processed folder
                 processed_folder = os.path.join(settings.COMPLETED_FOLDER, 'Orders')
                 os.makedirs(processed_folder, exist_ok=True)
-                processed_path = os.path.join(processed_folder, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file}")
+                processed_path = os.path.join(processed_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 logger.info(f"Moving file from {file_path} to {processed_path}")
                 os.rename(file_path, processed_path)
                 logger.info(f"Successfully moved processed file to: {processed_path}")
@@ -124,7 +127,7 @@ def process_excel_files():
                 # Move file to error folder
                 error_folder = os.path.join(settings.ERROR_FOLDER, 'Orders')
                 os.makedirs(error_folder, exist_ok=True)
-                error_path = os.path.join(error_folder, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file}")
+                error_path = os.path.join(error_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 os.rename(file_path, error_path)
                 logger.error(f"Moved error file to: {error_path}")
                 error_count += 1

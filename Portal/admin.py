@@ -22,8 +22,8 @@ class PortalAdminSite(AdminSite):
         """
         app_dict = self._build_app_dict(request)
         
-        # Create Settings and Operations sections
-        settings_models = ['UserProfile', 'WarehouseLocation']
+        # Define which models belong to Settings and Operations
+        settings_models = ['UserProfile', 'TaskConfig']  # Updated to include TaskConfig
         
         settings_section = {
             'name': 'Settings',
@@ -103,17 +103,32 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
 
-class WarehouseLocationAdmin(ImportExportModelAdmin):
-    resource_class = WarehouseLocationResource
-    list_display = ('wms_location', 'cn_bin')
-    search_fields = ('wms_location', 'cn_bin')
-    list_filter = ('wms_location',)
+class TaskConfigAdmin(admin.ModelAdmin):
+    list_display = ('task_name', 'is_enabled', 'frequency', 'last_run', 'next_run', 'updated_at')
+    list_filter = ('is_enabled', 'task_name')
+    search_fields = ('task_name',)
+    readonly_fields = ('last_run', 'next_run', 'created_at', 'updated_at')
+    ordering = ('task_name',)
     fieldsets = (
-        ('Location Information', {
-            'fields': ('wms_location', 'cn_bin'),
+        ('Task Configuration', {
+            'fields': ('task_name', 'is_enabled', 'frequency'),
             'classes': ('wide',)
         }),
+        ('Execution Information', {
+            'fields': ('last_run', 'next_run', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ('task_name',)
+        return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        if not change and obj.is_enabled:
+            obj.last_run = timezone.now()
+        super().save_model(request, obj, form, change)
 
 # Operational Models
 class OrderDataAdmin(ImportExportModelAdmin):
@@ -164,36 +179,21 @@ class MasterInventoryAdmin(ImportExportModelAdmin):
         }),
     )
 
-class TaskConfigAdmin(admin.ModelAdmin):
-    list_display = ('task_name', 'is_enabled', 'frequency', 'last_run', 'next_run', 'updated_at')
-    list_filter = ('is_enabled', 'task_name')
-    search_fields = ('task_name',)
-    readonly_fields = ('last_run', 'next_run', 'created_at', 'updated_at')
-    ordering = ('task_name',)
+class WarehouseLocationAdmin(ImportExportModelAdmin):
+    resource_class = WarehouseLocationResource
+    list_display = ('wms_location', 'cn_bin')
+    search_fields = ('wms_location', 'cn_bin')
+    list_filter = ('wms_location',)
     fieldsets = (
-        ('Task Configuration', {
-            'fields': ('task_name', 'is_enabled', 'frequency'),
+        ('Location Information', {
+            'fields': ('wms_location', 'cn_bin'),
             'classes': ('wide',)
-        }),
-        ('Execution Information', {
-            'fields': ('last_run', 'next_run', 'created_at', 'updated_at'),
-            'classes': ('collapse',)
         }),
     )
 
-    def get_readonly_fields(self, request, obj=None):
-        if obj:
-            return self.readonly_fields + ('task_name',)
-        return self.readonly_fields
-
-    def save_model(self, request, obj, form, change):
-        if not change and obj.is_enabled:
-            obj.last_run = timezone.now()
-        super().save_model(request, obj, form, change)
-
 # Register models with custom admin site
 portal_admin_site.register(UserProfile, UserProfileAdmin)
-portal_admin_site.register(WarehouseLocation, WarehouseLocationAdmin)
+portal_admin_site.register(TaskConfig, TaskConfigAdmin)
 portal_admin_site.register(OrderData, OrderDataAdmin)
 portal_admin_site.register(MasterInventory, MasterInventoryAdmin)
-portal_admin_site.register(TaskConfig, TaskConfigAdmin)
+portal_admin_site.register(WarehouseLocation, WarehouseLocationAdmin)
