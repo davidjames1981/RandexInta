@@ -89,21 +89,72 @@ WSGI_APPLICATION = 'CompactNodeInt.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DB_ENGINE'),
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-            'Encrypt': 'Optional',
-            'TrustServerCertificate': 'no',
-        },
-    }
-}
+def get_database_config():
+    database_url = os.getenv('DJANGO_DATABASE_URL')
+    
+    if not database_url:
+        # Fallback to SQLite if no database URL is provided
+        return {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+    
+    # Parse the database URL
+    if database_url.startswith('mssql://'):
+        # Remove the mssql:// prefix
+        database_url = database_url[8:]
+        # Split the URL into components
+        user_pass, host_port_db = database_url.split('@')
+        user, password = user_pass.split(':')
+        host_port, db_name = host_port_db.split('/')
+        host, port = host_port.split(':')
+        
+        return {
+            'default': {
+                'ENGINE': 'mssql',
+                'NAME': db_name,
+                'USER': user,
+                'PASSWORD': password,
+                'HOST': host,
+                'PORT': port,
+                'OPTIONS': {
+                    'driver': 'ODBC Driver 17 for SQL Server',
+                    'Encrypt': 'Optional',
+                    'TrustServerCertificate': 'no',
+                },
+            }
+        }
+    elif database_url.startswith('psql://'):
+        # Remove the psql:// prefix
+        database_url = database_url[7:]
+        # Split the URL into components
+        user_pass, host_port_db = database_url.split('@')
+        user, password = user_pass.split(':')
+        host_port, db_name = host_port_db.split('/')
+        host, port = host_port.split(':')
+        
+        return {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': db_name,
+                'USER': user,
+                'PASSWORD': password,
+                'HOST': host,
+                'PORT': port,
+            }
+        }
+    else:
+        # Fallback to SQLite if URL format is not recognized
+        return {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+
+DATABASES = get_database_config()
 
 
 # Password validation
