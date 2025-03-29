@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
+from django.utils import timezone
+from .config import TASK_CHOICES
 
 # Create your models here.
 
@@ -87,15 +89,6 @@ class WarehouseLocation(models.Model):
 
 
 class TaskConfig(models.Model):
-    TASK_CHOICES = [
-        ('Portal.tasks.import_order.process_excel_files', 'Excel - Order File Import'),
-        ('Portal.tasks.api_order_creation.create_api_orders', 'API - Create Orders'),
-        ('Portal.tasks.check_pick_status', 'API - Check Order Status'),
-        ('Portal.tasks.import_inventory.process_inventory_files', 'Excel - Inventory File Import'),
-        ('Portal.tasks.api_inventory.api_inventory_creation', 'API - Create Inventory API'),
-        ('Portal.tasks.export_order.export_completed_orders', 'Excel - Order Export'),
-    ]
-
     task_name = models.CharField(max_length=255, choices=TASK_CHOICES, unique=True)
     is_enabled = models.BooleanField(default=True)
     frequency = models.IntegerField(default=60, help_text="Frequency in seconds")
@@ -118,3 +111,20 @@ class TaskConfig(models.Model):
         if self.last_run and self.is_enabled:
             self.next_run = self.last_run + timedelta(seconds=self.frequency)
         super().save(*args, **kwargs)
+
+class StagingOrder(models.Model):
+    id = models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
+    order_number = models.CharField(max_length=50)
+    transaction_type = models.CharField(max_length=50)
+    item = models.CharField(max_length=50)
+    quantity = models.IntegerField()
+    location = models.CharField(max_length=255, null=True, blank=True)
+    order_line = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.order_number} - Line {self.order_line}"
+
+    class Meta:
+        db_table = 'Portal_staging_orders'
+        ordering = ['order_number', 'order_line']
