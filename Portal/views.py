@@ -47,27 +47,11 @@ def home(request):
         # Get paginated orders
         paginated_orders = orders[start_idx:end_idx]
         
-        # Get counts
-        pending_count = OrderData.objects.filter(sent_status=0).count()
-        sent_count = OrderData.objects.filter(sent_status=1).count()
-        error_count = OrderData.objects.filter(sent_status=99).count()
-        
-        logger.info(f"Order counts - Total: {total_records}, Page: {page}/{total_pages}")
-
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            logger.debug("AJAX request received, returning JSON response")
-            return JsonResponse({
-                'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
-                                           'item', 'quantity', 'actual_qty', 'sent_status', 
-                                           'processed_at', 'api_error', 'user', 'order_line',
-                                           'shortage_qty')),
-                'pagination': {
-                    'page': page,
-                    'total_pages': total_pages,
-                    'total_records': total_records,
-                    'page_size': page_size
-                }
-            })
+        # Get counts for KPIs
+        total_orders = OrderData.objects.count()
+        pending_orders = OrderData.objects.filter(Q(sent_status=0) | Q(sent_status__isnull=True)).count()
+        sent_orders = OrderData.objects.filter(sent_status=1).count()
+        failed_orders = OrderData.objects.filter(sent_status=99).count()
         
         # Format environment variables
         db_host = os.getenv('DB_HOST', 'localhost')
@@ -81,18 +65,40 @@ def home(request):
         
         logger.debug(f"System configuration loaded - DB: {db_host}:{db_port}, API: {api_host}")
         
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            logger.debug("AJAX request received, returning JSON response")
+            return JsonResponse({
+                'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
+                                           'item', 'quantity', 'actual_qty', 'sent_status', 
+                                           'processed_at', 'api_error', 'user', 'order_line',
+                                           'shortage_qty')),
+                'pagination': {
+                    'page': page,
+                    'total_pages': total_pages,
+                    'total_records': total_records,
+                    'page_size': page_size
+                },
+                'kpis': {
+                    'total_orders': total_orders,
+                    'pending_orders': pending_orders,
+                    'sent_orders': sent_orders,
+                    'failed_orders': failed_orders
+                }
+            })
+        
         context = {
-            'orders': list(paginated_orders.values('id', 'order_number', 'transaction_type',
-                                   'item', 'quantity', 'actual_qty', 'sent_status', 
-                                   'processed_at', 'api_error', 'user', 'order_line',
-                                   'shortage_qty')),
-            'pending_count': pending_count,
-            'sent_count': sent_count,
-            'error_count': error_count,
-            'WATCH_FOLDER': os.getenv('WATCH_FOLDER'),
-            'COMPLETED_FOLDER': os.getenv('COMPLETED_FOLDER'),
-            'ERROR_FOLDER': os.getenv('ERROR_FOLDER'),
+            'orders': paginated_orders,
+            'total_records': total_records,
+            'page': page,
+            'total_pages': total_pages,
+            'page_size': page_size,
+            'page_size_options': [50, 100, 200, 500],
             'search_query': search_query,
+            'sort_by': sort_by,
+            'total_orders': total_orders,
+            'pending_orders': pending_orders,
+            'sent_orders': sent_orders,
+            'failed_orders': failed_orders,
             'DB_HOST': db_host,
             'DB_PORT': db_port,
             'API_HOST': api_host,
@@ -101,18 +107,15 @@ def home(request):
             'PICK_CHECK_FREQUENCY': pick_check_frequency,
             'REDIS_HOST': redis_host,
             'REDIS_PORT': redis_port,
-            'page': page,
-            'total_pages': total_pages,
-            'total_records': total_records,
-            'page_size': page_size,
-            'page_size_options': [100, 200, 500, 1000]
         }
+        
         return render(request, 'portal/home.html', context)
         
     except Exception as e:
-        logger.error(f"Error in home view: {str(e)}", exc_info=True)
-        messages.error(request, 'An error occurred while loading the page. Please try again.')
-        return render(request, 'portal/home.html', {})
+        logger.error(f"Error in home view: {str(e)}")
+        logger.exception("Full traceback:")
+        messages.error(request, f'An error occurred while loading the page: {str(e)}')
+        return render(request, 'portal/home.html', {'error': str(e)})
 
 def register(request):
     if request.method == 'POST':
