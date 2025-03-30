@@ -24,7 +24,7 @@ load_dotenv(env_path, override=True)
 print(f"REDIS_HOST from env: {os.getenv('REDIS_HOST')}")
 print(f"REDIS_PORT from env: {os.getenv('REDIS_PORT')}")
 
-# Set the default Django settings module for the 'celery' program.
+# Set the default Django settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'CompactNodeInt.settings')
 
 # Initialize Django
@@ -33,8 +33,7 @@ django.setup()
 # Create the Celery app
 app = Celery('CompactNodeInt')
 
-# Using a string here means the worker doesn't have to serialize
-# the configuration object to child processes.
+# Configure Celery using settings from Django settings.py
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Configure Celery to use Redis as the broker and result backend
@@ -168,15 +167,9 @@ def at_worker_ready(**kwargs):
     print("\nWorker is ready!")
     print("Registered tasks:", app.tasks.keys())
 
-# Load task modules from all registered Django app configs.
+# Auto-discover tasks in all registered Django app configs
 app.autodiscover_tasks()
 
 @app.task(bind=True)
 def debug_task(self):
-    print(f'Request: {self.request!r}')
-
-# Configure Celery logging
-app.conf.update(
-    worker_hijack_root_logger=False,  # Don't hijack root logger
-    worker_redirect_stdouts=False,    # Don't redirect stdout/stderr
-) 
+    print(f'Request: {self.request!r}') 

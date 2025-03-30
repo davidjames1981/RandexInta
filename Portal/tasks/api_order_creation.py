@@ -1,17 +1,13 @@
 import os
-import logging
 import json
 from celery import shared_task
 import requests
 from django.db.models import Count
 from Portal.models import OrderData
 from dotenv import load_dotenv
-from django.utils import timezone
+from Portal.utils.logger import api_logger as logger
 
 load_dotenv()
-
-# Set up logger
-logger = logging.getLogger('api_create_orders')
 
 @shared_task(name='Portal.tasks.api_order_creation.create_api_orders')
 def create_api_orders():

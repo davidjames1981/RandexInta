@@ -6,15 +6,12 @@ from .models import UserProfile, OrderData, MasterInventory
 from django.http import JsonResponse
 from django.db.models import Q
 import os
-import logging
 from dotenv import load_dotenv
+from Portal.utils.logger import general_logger as logger
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 
 load_dotenv()
-
-# Set up logger
-logger = logging.getLogger('django')
 
 def home(request):
     """Home view displaying orders and system status"""

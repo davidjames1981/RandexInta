@@ -1,14 +1,9 @@
 import os
-import logging
 import pandas as pd
 from celery import shared_task
 from django.conf import settings
-from django.utils import timezone
-from ..models import OrderData
-from ..utils.path_utils import get_watch_path
-
-# Set up logger
-logger = logging.getLogger('excel_order_export')
+from Portal.models import OrderData
+from Portal.utils.logger import general_logger as logger
 
 @shared_task(name='Portal.tasks.export_order.export_completed_orders')
 def export_completed_orders():
@@ -16,13 +11,10 @@ def export_completed_orders():
     Task to export completed orders (status=3) to Excel files.
     Creates one file per order and updates status to 4 after successful export.
     """
+    logger.info("="*80)
+    logger.info("Starting order export task")
+    
     try:
-        logger.info("="*80)
-        logger.info("Starting Excel order export task")
-        
-        # Get folder paths using the utility function
-        export_folder = get_watch_path(os.getenv('ORDERS_EXPORT_FOLDER'))
-        
         # Get completed orders that haven't been exported yet
         completed_orders = OrderData.objects.filter(
             sent_status=3
@@ -32,6 +24,8 @@ def export_completed_orders():
             logger.info("No completed orders to export")
             return "No orders to export"
             
+        export_folder = os.path.join(settings.WATCH_FOLDER, 'Order Export')
+        os.makedirs(export_folder, exist_ok=True)
         logger.info(f"Exporting to folder: {export_folder}")
         
         exported_count = 0
@@ -105,6 +99,6 @@ def export_completed_orders():
         return f"Exported {exported_count} orders"
         
     except Exception as e:
-        logger.error(f"Critical error in export_completed_orders task: {str(e)}")
+        logger.error(f"Error in export_completed_orders task: {str(e)}")
         logger.exception("Full traceback:")
         return f"Error: {str(e)}" 

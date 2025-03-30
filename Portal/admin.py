@@ -56,21 +56,15 @@ class CustomUserAdmin(UserAdmin):
             return list()
         return super(CustomUserAdmin, self).get_inline_instances(request, obj)
 
-@admin.register(TaskConfig)
 class TaskConfigAdmin(admin.ModelAdmin):
-    list_display = ('task_name', 'is_enabled', 'frequency', 'last_run', 'next_run')
+    list_display = ('task_name', 'is_enabled')
     list_filter = ('is_enabled',)
-    readonly_fields = ('last_run', 'next_run', 'created_at', 'updated_at')
     search_fields = ('task_name',)
     ordering = ('task_name',)
     fieldsets = (
         ('Task Configuration', {
-            'fields': ('task_name', 'is_enabled', 'frequency'),
+            'fields': ('task_name', 'is_enabled'),
             'classes': ('wide',)
-        }),
-        ('Timing Information', {
-            'fields': ('last_run', 'next_run', 'created_at', 'updated_at'),
-            'classes': ('collapse',)
         }),
     )
 
@@ -156,6 +150,7 @@ class WarehouseLocationAdmin(ImportExportModelAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(TaskConfig, TaskConfigAdmin)
 admin.site.register(OrderData, OrderDataAdmin)
 admin.site.register(MasterInventory, MasterInventoryAdmin)
 admin.site.register(WarehouseLocation, WarehouseLocationAdmin)

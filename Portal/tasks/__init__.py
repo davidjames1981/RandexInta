@@ -19,7 +19,6 @@ from .check_pick_status import check_pick_status
 from .import_inventory import process_inventory_files
 from .api_inventory import api_inventory_creation
 from .export_order import export_completed_orders
-from .import_db_orders import process_db_orders
 
 # Register all tasks
 __all__ = [
@@ -29,7 +28,6 @@ __all__ = [
     'process_inventory_files',
     'api_inventory_creation',
     'export_completed_orders',
-    'process_db_orders',
 ]
 
 # Ensure tasks are registered with Celery
@@ -40,5 +38,4 @@ tasks = [
     process_inventory_files,
     api_inventory_creation,
     export_completed_orders,
-    process_db_orders,
 ] 
