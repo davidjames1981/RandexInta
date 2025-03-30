@@ -61,9 +61,18 @@ class TaskConfigAdmin(admin.ModelAdmin):
     list_filter = ('is_enabled',)
     search_fields = ('task_name',)
     ordering = ('task_name',)
+    readonly_fields = ('last_run', 'next_run')
     fieldsets = (
         ('Task Configuration', {
+<<<<<<< HEAD
+<<<<<<< HEAD
+            'fields': ('task_name', 'is_enabled', 'frequency', 'last_run', 'next_run'),
+=======
             'fields': ('task_name', 'is_enabled'),
+>>>>>>> 878f18b56faf744203ae8504aebc69d5d95b256b
+=======
+            'fields': ('task_name', 'is_enabled'),
+>>>>>>> David/stageing-table
             'classes': ('wide',)
         }),
     )
