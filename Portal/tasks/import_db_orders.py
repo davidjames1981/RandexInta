@@ -123,6 +123,7 @@ def process_staging_orders():
                         'bin_location': bin_location,
                         'order_line': order_line,
                         'sent_status': 0,
+                        'file_name': 'DB Import',
                         'processed_at': timezone.now(),
                         'inserted_date': created_at
                     }
