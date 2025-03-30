@@ -9,9 +9,9 @@ load_dotenv()
 def setup_logger(name, log_file, level=logging.INFO):
     """Function to setup a logger with file and console handlers"""
     # Create logs directory if it doesn't exist
-    log_dir = os.getenv('LOG_FOLDER')
+    log_dir = os.path.join(os.getenv('WATCH_FOLDER'), os.getenv('LOGS_FOLDER'))
     if not log_dir:
-        raise ValueError("LOG_FOLDER environment variable is not set")
+        raise ValueError("WATCH_FOLDER or LOGS_FOLDER environment variable is not set")
     
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
