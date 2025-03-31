@@ -19,4 +19,12 @@ def get_range(total_pages, current_page):
         page_range.add(page)
     
     # Convert to sorted list
-    return sorted(list(page_range)) 
+    return sorted(list(page_range))
+
+@register.filter
+def range_filter(value):
+    """Returns a range of numbers from 1 to value (inclusive)"""
+    try:
+        return range(1, int(value) + 1)
+    except (ValueError, TypeError):
+        return [] 

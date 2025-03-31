@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
+from django.contrib import admin
 
 # Create your models here.
 
@@ -94,6 +95,7 @@ class TaskConfig(models.Model):
         ('Portal.tasks.import_inventory.process_inventory_files', 'Excel - Inventory File Import'),
         ('Portal.tasks.api_inventory.api_inventory_creation', 'API - Create Inventory API'),
         ('Portal.tasks.export_order.export_completed_orders', 'Excel - Order Export'),
+        ('Portal.tasks.vlm_demo.process_demo_orders', 'VLM - Demo Mode'),
     ]
 
     task_name = models.CharField(max_length=255, choices=TASK_CHOICES, unique=True)
@@ -118,3 +120,21 @@ class TaskConfig(models.Model):
         if self.last_run and self.is_enabled:
             self.next_run = self.last_run + timedelta(seconds=self.frequency)
         super().save(*args, **kwargs)
+
+class TransactionLog(models.Model):
+    """Model to store VLM demo mode transaction logs"""
+    timestamp = models.DateTimeField(auto_now_add=True)
+    order_id = models.CharField(max_length=36)
+    order_name = models.CharField(max_length=255)
+    action = models.CharField(max_length=50)  # e.g., 'allocate', 'start', 'complete'
+    status = models.CharField(max_length=20)  # e.g., 'success', 'error'
+    details = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Transaction Log'
+        verbose_name_plural = 'Transaction Logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.timestamp} - {self.order_name} - {self.action} - {self.status}"

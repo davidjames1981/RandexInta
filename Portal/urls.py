@@ -13,4 +13,5 @@ urlpatterns = [
     path('reset-order/<int:order_id>/', views.reset_order_status, name='reset_order_status'),
     path('inventory/', views.inventory, name='inventory'),
     path('reset_inventory_status/<int:item_id>/', views.reset_inventory_status, name='reset_inventory_status'),
+    path('transaction-logs/', views.transaction_logs, name='transaction_logs'),
 ] 

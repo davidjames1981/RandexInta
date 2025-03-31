@@ -39,6 +39,9 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
+# Demo mode setting
+DEMO_MODE_ENABLED = os.getenv('DEMO_MODE_ENABLED', 'false').lower() == 'true'
+
 ALLOWED_HOSTS = ['*']  # In production, replace with your domain
 
 
@@ -78,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'Portal.views.demo_mode_context',
             ],
         },
     },

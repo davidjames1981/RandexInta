@@ -56,4 +56,5 @@ def setup_logger(name, log_file, level=logging.INFO):
 # Create loggers for different components with DEBUG level for more detail
 import_logger = setup_logger('import_task', 'import_task.log', level=logging.DEBUG)
 api_logger = setup_logger('api_task', 'api_task.log', level=logging.DEBUG)
-general_logger = setup_logger('general', 'general.log', level=logging.DEBUG) 
+general_logger = setup_logger('general', 'general.log', level=logging.DEBUG)
+vlm_demo_logger = setup_logger('vlm_demo', 'vlm_demo.log', level=logging.DEBUG) 

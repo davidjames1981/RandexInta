@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-from .models import UserProfile, OrderData, MasterInventory
+from .models import UserProfile, OrderData, MasterInventory, TransactionLog
 from django.http import JsonResponse
 from django.db.models import Q
 import os
@@ -10,8 +10,15 @@ from dotenv import load_dotenv
 from Portal.utils.logger import general_logger as logger
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
+from django.conf import settings
 
 load_dotenv()
+
+def demo_mode_context(request):
+    """Context processor to make DEMO_MODE_ENABLED available in all templates"""
+    return {
+        'DEMO_MODE_ENABLED': settings.DEMO_MODE_ENABLED
+    }
 
 def home(request):
     """Home view displaying orders and system status"""
@@ -253,3 +260,70 @@ def reset_inventory_status(request, item_id):
     inventory_item.status = 0
     inventory_item.save()
     return redirect('portal:inventory')
+
+@login_required
+def transaction_logs(request):
+    """View for displaying VLM demo mode transaction logs"""
+    if not settings.DEMO_MODE_ENABLED:
+        messages.error(request, 'Transaction logs are only available in demo mode.')
+        return redirect('portal:home')
+    
+    try:
+        # Get search parameters
+        search_query = request.GET.get('search', '')
+        page_size = int(request.GET.get('page_size', '50'))
+        page = int(request.GET.get('page', '1'))
+        
+        logger.info(f"Transaction logs page accessed. Search: '{search_query}', Page: {page}, Page Size: {page_size}")
+        
+        # Base queryset
+        logs = TransactionLog.objects.all()
+        
+        # Apply search if provided
+        if search_query:
+            logs = logs.filter(
+                Q(order_name__icontains=search_query) |
+                Q(action__icontains=search_query) |
+                Q(status__icontains=search_query)
+            )
+            logger.info(f"Applied search filter. Found {logs.count()} matching logs")
+        
+        # Calculate pagination
+        total_records = logs.count()
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        total_pages = (total_records + page_size - 1) // page_size
+        
+        # Get paginated logs
+        paginated_logs = logs[start_idx:end_idx]
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            logger.debug("AJAX request received, returning JSON response")
+            return JsonResponse({
+                'logs': list(paginated_logs.values('id', 'timestamp', 'order_id', 'order_name',
+                                           'action', 'status', 'details', 'error_message')),
+                'pagination': {
+                    'page': page,
+                    'total_pages': total_pages,
+                    'total_records': total_records,
+                    'page_size': page_size
+                }
+            })
+        
+        context = {
+            'logs': paginated_logs,
+            'total_records': total_records,
+            'page': page,
+            'total_pages': total_pages,
+            'page_size': page_size,
+            'page_size_options': [25, 50, 100, 250],
+            'search_query': search_query,
+        }
+        
+        return render(request, 'Portal/transaction_logs.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error in transaction_logs view: {str(e)}")
+        logger.exception("Full traceback:")
+        messages.error(request, f'An error occurred while loading the transaction logs: {str(e)}')
+        return render(request, 'Portal/transaction_logs.html', {'error': str(e)})

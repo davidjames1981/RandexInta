@@ -27,9 +27,6 @@ print(f"REDIS_PORT from env: {os.getenv('REDIS_PORT')}")
 # Set the default Django settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'CompactNodeInt.settings')
 
-# Initialize Django
-django.setup()
-
 # Create the Celery app
 app = Celery('CompactNodeInt')
 
@@ -66,6 +63,12 @@ app.conf.task_default_exchange = 'celery'
 app.conf.task_default_routing_key = 'celery'
 app.conf.task_default_delivery_mode = 'persistent'
 
+# Initialize Django
+django.setup()
+
+# Auto-discover tasks in all registered Django app configs
+app.autodiscover_tasks()
+
 def get_task_schedule():
     """
     Get task schedule from database configurations
@@ -82,8 +85,8 @@ def get_task_schedule():
         for task in enabled_tasks:
             print(f"Processing task: {task.task_name} (Frequency: {task.frequency}s)")
             schedule[task.task_name] = {
-                'task': task.task_name,
-                'schedule': timedelta(seconds=float(task.frequency)),  # Convert to timedelta
+                'task': task.task_name,  # Use the full import path
+                'schedule': timedelta(seconds=float(task.frequency)),
                 'options': {
                     'expires': float(task.frequency) - 1.0,
                     'queue': 'celery'
@@ -166,9 +169,6 @@ def at_worker_ready(**kwargs):
     """
     print("\nWorker is ready!")
     print("Registered tasks:", app.tasks.keys())
-
-# Auto-discover tasks in all registered Django app configs
-app.autodiscover_tasks()
 
 @app.task(bind=True)
 def debug_task(self):

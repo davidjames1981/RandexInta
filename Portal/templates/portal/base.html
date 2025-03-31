@@ -188,6 +188,13 @@
                             </a>
                         </li>
                     {% endif %}
+                    {% if DEMO_MODE_ENABLED %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'transaction_logs' %}active{% endif %}" href="{% url 'portal:transaction_logs' %}">
+                            <i class="bi bi-journal-text me-1"></i>Transaction Logs
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

@@ -1,0 +1,175 @@
+{% extends 'portal/base.html' %}
+{% load static %}
+{% load portal_filters %}
+{% load json_encode from json_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>VLM Demo Mode Transaction Logs</h2>
+    
+    <!-- Search Form -->
+    <form method="get" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Search logs..." value="{{ search_query }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+    
+    <!-- Logs Table -->
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Order Name</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td>{{ log.order_name }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>
+                        <span class="badge {% if log.status == 'success' %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ log.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if log.details %}
+                        <button class="btn btn-sm btn-info" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#detailsModal" 
+                                data-details='{{ log.details|json_encode }}'>
+                            View Details
+                        </button>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.error_message %}
+                        <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#errorModal" onclick="prepareError('{{ log.error_message|escapejs }}')">
+                            View Error
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No logs found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page|add:'-1' }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for i in total_pages|range_filter %}
+            <li class="page-item {% if page == forloop.counter %}active{% endif %}">
+                <a class="page-link" href="?page={{ forloop.counter }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ forloop.counter }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page|add:'1' }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="detailsContent"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorModalLabel">Error Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="errorContent"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all buttons that can trigger the details modal
+    const detailButtons = document.querySelectorAll('[data-bs-target="#detailsModal"]');
+    
+    // Add click handler to each button
+    detailButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            try {
+                // Get the details from the data attribute
+                const detailsStr = this.getAttribute('data-details');
+                const details = JSON.parse(detailsStr);
+                
+                // Format and display the details
+                const formattedDetails = JSON.stringify(details, null, 2);
+                document.getElementById('detailsContent').textContent = formattedDetails;
+            } catch (error) {
+                console.error('Error displaying details:', error);
+                document.getElementById('detailsContent').textContent = 'Error displaying details: ' + error.message;
+            }
+        });
+    });
+
+    // Get modal elements
+    const detailsModal = document.getElementById('detailsModal');
+    const errorModal = document.getElementById('errorModal');
+    
+    // Clear content when modals are hidden
+    detailsModal.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('detailsContent').textContent = '';
+    });
+    
+    errorModal.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('errorContent').textContent = '';
+    });
+});
+
+// Keep the error handling function
+function prepareError(error) {
+    document.getElementById('errorContent').textContent = error;
+}
+</script>
+{% endblock %} 

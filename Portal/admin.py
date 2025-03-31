@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, TaskConfig, OrderData, MasterInventory, WarehouseLocation
+from .models import UserProfile, TaskConfig, OrderData, MasterInventory, WarehouseLocation, TransactionLog
 from django.utils.html import format_html
 from django.urls import path
 from django.shortcuts import render
@@ -149,9 +149,26 @@ class WarehouseLocationAdmin(ImportExportModelAdmin):
         }),
     )
 
+class TransactionLogAdmin(admin.ModelAdmin):
+    list_display = ('timestamp', 'order_name', 'action', 'status')
+    list_filter = ('status', 'action', 'timestamp')
+    search_fields = ('order_name', 'action', 'status')
+    readonly_fields = ('timestamp',)
+    ordering = ('-timestamp',)
+    fieldsets = (
+        ('Transaction Information', {
+            'fields': ('timestamp', 'order_id', 'order_name', 'action', 'status'),
+        }),
+        ('Details', {
+            'fields': ('details', 'error_message'),
+            'classes': ('collapse',)
+        }),
+    )
+
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(TaskConfig, TaskConfigAdmin)
 admin.site.register(OrderData, OrderDataAdmin)
 admin.site.register(MasterInventory, MasterInventoryAdmin)
 admin.site.register(WarehouseLocation, WarehouseLocationAdmin)
+admin.site.register(TransactionLog, TransactionLogAdmin)
