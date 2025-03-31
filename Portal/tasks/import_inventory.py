@@ -78,7 +78,7 @@ def process_inventory_files():
                         error_count += 1
                 
                 # Move file to processed folder
-                processed_folder = os.path.join(settings.COMPLETED_FOLDER, 'Inventory')
+                processed_folder = os.path.join(settings.WATCH_FOLDER, 'processed')
                 os.makedirs(processed_folder, exist_ok=True)
                 processed_path = os.path.join(processed_folder, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 logger.info(f"Moving file from {file_path} to {processed_path}")
@@ -89,7 +89,7 @@ def process_inventory_files():
                 logger.error(f"Error processing file {file}: {str(file_error)}")
                 logger.exception("Full traceback:")
                 # Move file to error folder
-                error_folder = os.path.join(settings.ERROR_FOLDER, 'Inventory')
+                error_folder = os.path.join(settings.WATCH_FOLDER, 'error')
                 os.makedirs(error_folder, exist_ok=True)
                 error_path = os.path.join(error_folder, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file}")
                 os.rename(file_path, error_path)

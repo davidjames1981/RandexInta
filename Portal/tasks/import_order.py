@@ -2,9 +2,9 @@ import os
 import pandas as pd
 import numpy as np  # Add this import to handle NaN checks
 from celery import shared_task
-from django.conf import settings
 from django.utils import timezone
 from ..models import OrderData, WarehouseLocation
+from ..utils.folder_setup import get_folder_path
 import logging
 from datetime import datetime
 
@@ -18,7 +18,12 @@ def process_excel_files():
         logger.info("="*80)
         logger.info("Starting order file processing task")
         
-        import_folder = os.path.join(settings.WATCH_FOLDER, 'Orders')
+        # Get the orders folder path using our utility
+        import_folder = get_folder_path('orders')
+        if not import_folder:
+            logger.error("Could not get orders folder path")
+            return "Could not get orders folder path"
+            
         logger.info(f"Looking for files in: {import_folder}")
         
         if not os.path.exists(import_folder):
@@ -114,22 +119,24 @@ def process_excel_files():
                         error_count += 1
                 
                 # Move file to processed folder
-                processed_folder = os.path.join(settings.COMPLETED_FOLDER, 'Orders')
-                os.makedirs(processed_folder, exist_ok=True)
-                processed_path = os.path.join(processed_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
-                logger.info(f"Moving file from {file_path} to {processed_path}")
-                os.rename(file_path, processed_path)
-                logger.info(f"Successfully moved processed file to: {processed_path}")
+                processed_folder = get_folder_path('processed')
+                if processed_folder:
+                    os.makedirs(processed_folder, exist_ok=True)
+                    processed_path = os.path.join(processed_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
+                    logger.info(f"Moving file from {file_path} to {processed_path}")
+                    os.rename(file_path, processed_path)
+                    logger.info(f"Successfully moved processed file to: {processed_path}")
                 
             except Exception as file_error:
                 logger.error(f"Error processing file {file}: {str(file_error)}")
                 logger.exception("Full traceback:")
                 # Move file to error folder
-                error_folder = os.path.join(settings.ERROR_FOLDER, 'Orders')
-                os.makedirs(error_folder, exist_ok=True)
-                error_path = os.path.join(error_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
-                os.rename(file_path, error_path)
-                logger.error(f"Moved error file to: {error_path}")
+                error_folder = get_folder_path('error')
+                if error_folder:
+                    os.makedirs(error_folder, exist_ok=True)
+                    error_path = os.path.join(error_folder, f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file}")
+                    os.rename(file_path, error_path)
+                    logger.error(f"Moved error file to: {error_path}")
                 error_count += 1
 
         logger.info(f"Task completed. Processed {processed_count} orders with {error_count} errors")

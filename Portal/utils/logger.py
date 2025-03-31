@@ -2,16 +2,14 @@ import os
 import logging
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from dotenv import load_dotenv
-
-load_dotenv()
+from .folder_setup import get_folder_path
 
 def setup_logger(name, log_file, level=logging.INFO):
     """Function to setup a logger with file and console handlers"""
-    # Create logs directory if it doesn't exist
-    log_dir = os.path.join(os.getenv('WATCH_FOLDER'), os.getenv('LOGS_FOLDER'))
+    # Get logs directory using folder_setup utility
+    log_dir = get_folder_path('logs')
     if not log_dir:
-        raise ValueError("WATCH_FOLDER or LOGS_FOLDER environment variable is not set")
+        raise ValueError("Could not get logs folder path")
     
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)

@@ -1,9 +1,9 @@
 import os
 import pandas as pd
 from celery import shared_task
-from django.conf import settings
 from Portal.models import OrderData
 from Portal.utils.logger import general_logger as logger
+from ..utils.folder_setup import get_folder_path
 
 @shared_task(name='Portal.tasks.export_order.export_completed_orders')
 def export_completed_orders():
@@ -24,7 +24,11 @@ def export_completed_orders():
             logger.info("No completed orders to export")
             return "No orders to export"
             
-        export_folder = os.path.join(settings.WATCH_FOLDER, 'Order Export')
+        export_folder = get_folder_path('export')
+        if not export_folder:
+            logger.error("Could not get export folder path")
+            return "Export folder path not configured"
+            
         os.makedirs(export_folder, exist_ok=True)
         logger.info(f"Exporting to folder: {export_folder}")
         
