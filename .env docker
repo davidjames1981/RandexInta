@@ -1,0 +1,60 @@
+# New format - Database URL (uncomment the one you want to use)
+#DJANGO_DATABASE_URL=mssql://sa:Alphabet123@localhost:1433/RandexIntegration
+#DJANGO_DATABASE_URL=psql://postgres:Alphabet123@localhost:5432/RandexInt
+
+DJANGO_DATABASE_URL=mssql://sa:Alphabet123@host.docker.internal:1433/RandexIntegration
+#DJANGO_DATABASE_URL=psql://postgres:Alphabet123@host.docker.internal:5432/RandexInt
+
+REDIS_PORT=6379
+#REDIS_HOST=localhost
+
+#local
+#WATCH_FOLDER=C:\Cursor\RandexInt\Files
+#COMPLETED_FOLDER=C:\Cursor\RandexInt\Files\Completed
+#ERROR_FOLDER=C:\Cursor\RandexInt\Files\Error
+#LOG_FOLDER=C:\Cursor\RandexInt\Files\Logs
+#REDIS_HOST=localhost
+
+#docker
+WATCH_FOLDER=/app/Files
+#COMPLETED_FOLDER=/app/Files/Completed
+#ERROR_FOLDER=/app/Files/Error
+#LOG_FOLDER=/app/Files/Logs
+REDIS_HOST=redis
+
+
+# API Settings
+API_HOST=http://18.135.240.39:8000
+WAREHOUSE=Randex
+
+
+# Django Settings
+SECRET_KEY=django-insecure-your-secret-key-here
+DEBUG=True 
+
+# Root Watch Folder and Structure
+#WATCH_FOLDER=C:/RandexInt/Watchfolder
+INVENTORY_IMPORT_FOLDER=inventory
+ORDERS_IMPORT_FOLDER=orders
+ORDERS_EXPORT_FOLDER=export
+PROCESSED_FOLDER=processed
+ERROR_FOLDER=error
+ARCHIVE_FOLDER=archive
+LOGS_FOLDER=logs
+
+# Staging Database Connection
+STAGING_DATABASE_URL=mssql://sa:Alphabet123@localhost:1433/RandexIntegration
+
+# Staging Database Column Mapping
+STAGING_ORDERS_TABLE=Portal_staging_orders
+STAGING_ORDER_NUMBER_COL=order_number
+STAGING_TRANSACTION_TYPE_COL=transaction_type
+STAGING_ITEM_COL=item
+STAGING_QUANTITY_COL=quantity
+STAGING_LOCATION_COL=location
+STAGING_ORDER_LINE_COL=order_line
+STAGING_CREATED_AT_COL=created_at
+
+DEMO_MODE_ENABLED=true
+
+

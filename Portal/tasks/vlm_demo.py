@@ -22,6 +22,11 @@ def process_demo_orders():
     4. Monitor processor status
     5. Complete tasks after 15 seconds
     """
+    # Check if demo mode is enabled
+    if not settings.DEMO_MODE_ENABLED:
+        logger.info("VLM demo mode is disabled in Django settings")
+        return "Demo mode disabled"
+    
     # Check if task is enabled in TaskConfig
     try:
         task_config = TaskConfig.objects.get(task_name='Portal.tasks.vlm_demo.process_demo_orders')
@@ -42,150 +47,144 @@ def process_demo_orders():
         
         logger.info(f"Configuration - API Host: {api_host}, Processor ID: {processor_id}")
         
-        while True:
-            try:
-                # Step 1: Get orders
-                orders_url = f"{api_host}/api/order/?limit=25&offset=0&search=&order_type__in=3,4,6,7,8,9&allocation_status=&status="
-                logger.info(f"Fetching orders from: {orders_url}")
-                
-                response = requests.get(orders_url, timeout=30)
-                response.raise_for_status()
-                response_data = response.json()
-                
-                logger.debug(f"Orders API Response: {json.dumps(response_data, indent=2)}")
-                
-                # Extract orders from the results key
-                orders = response_data.get('results', [])
-                
-                if not orders:
-                    logger.info("No orders found, waiting 10 seconds before next check")
-                    time.sleep(10)
-                    continue
-                
-                logger.info(f"Found {len(orders)} orders to process")
-                
-                # Step 2: Process each non-manual order
-                for order in orders:
-                    order_id = order['id']
-                    order_name = order['name']
-                    
-                    logger.info(f"Processing order: {order_name} (ID: {order_id})")
-                    logger.debug(f"Order details: {json.dumps(order, indent=2)}")
-                    
-                    # Skip manual orders
-                    if 'Manual' in order_name:
-                        logger.info(f"Skipping manual order: {order_name}")
-                        continue
-                    
-                    # Log order fetch
-                    TransactionLog.objects.create(
-                        order_id=order_id,
-                        order_name=order_name,
-                        action='fetch_order',
-                        status='success',
-                        details=order  # Don't pre-serialize the JSON
-                    )
-                    
-                    # Allocate order
-                    allocate_url = f"{api_host}/api/order/{order_id}/allocate"
-                    logger.info(f"Allocating order: {allocate_url}")
-                    
-                    response = requests.post(allocate_url, timeout=30)
-                    response.raise_for_status()
-                    allocation_result = response.json()
-                    
-                    logger.info(f"Allocation result: {json.dumps(allocation_result, indent=2)}")
-                    
-                    # Log allocation
-                    TransactionLog.objects.create(
-                        order_id=order_id,
-                        order_name=order_name,
-                        action='allocate_order',
-                        status='success',
-                        details=allocation_result  # Don't pre-serialize the JSON
-                    )
-                    
-                    # Start order
-                    start_url = f"{api_host}/api/order/{order_id}/start"
-                    logger.info(f"Starting order: {start_url}")
-                    
-                    response = requests.post(start_url, timeout=30)
-                    response.raise_for_status()
-                    start_result = response.json()
-                    
-                    logger.info(f"Start result: {json.dumps(start_result, indent=2)}")
-                    
-                    # Log start
-                    TransactionLog.objects.create(
-                        order_id=order_id,
-                        order_name=order_name,
-                        action='start_order',
-                        status='success',
-                        details=start_result  # Don't pre-serialize the JSON
-                    )
-                    
-                    # Step 3: Monitor processor status
-                    while True:
-                        processor_url = f"{api_host}/api/processor/{processor_id}"
-                        logger.info(f"Checking processor status: {processor_url}")
-                        
-                        response = requests.get(processor_url, timeout=30)
-                        response.raise_for_status()
-                        processor_tasks = response.json()
-                        
-                        logger.debug(f"Processor status response: {json.dumps(processor_tasks, indent=2)}")
-                        
-                        if not processor_tasks:
-                            logger.info("No tasks currently processing")
-                            break
-                        
-                        # Process each task
-                        for task in processor_tasks:
-                            task_id = task['task_id']
-                            task_quantity = task['task_quantity']
-                            
-                            logger.info(f"Found task {task_id} with quantity {task_quantity}")
-                            logger.debug(f"Task details: {json.dumps(task, indent=2)}")
-                            
-                            # Wait 15 seconds before completing
-                            logger.info("Waiting 15 seconds before completing task")
-                            time.sleep(15)
-                            
-                            # Complete task
-                            complete_url = f"{api_host}/api/confirm-from-displaytool"
-                            payload = {
-                                "task_id": task_id,
-                                "quantity_measured": None,
-                                "quantity_input": task_quantity,
-                                "isContainerFullQ": False
-                            }
-                            
-                            logger.info(f"Completing task: {complete_url}")
-                            logger.debug(f"Completion payload: {json.dumps(payload, indent=2)}")
-                            
-                            response = requests.post(complete_url, json=payload, timeout=30)
-                            response.raise_for_status()
-                            
-                            logger.info("Task completed successfully")
-                    
-                    logger.info(f"Finished processing order: {order_name}")
-                
-                # Wait 10 seconds before checking for new orders
-                logger.info("Waiting 10 seconds before checking for new orders")
-                time.sleep(10)
-                
-            except requests.exceptions.RequestException as e:
-                logger.error(f"API error: {str(e)}")
-                logger.exception("Full traceback:")
-                time.sleep(10)  # Wait before retrying
+        # Step 1: Get orders
+        orders_url = f"{api_host}/api/order/?limit=25&offset=0&search=&order_type__in=3,4,6,7,8,9&allocation_status=&status="
+        logger.info(f"Fetching orders from: {orders_url}")
+        
+        response = requests.get(orders_url, timeout=30)
+        response.raise_for_status()
+        response_data = response.json()
+        
+        logger.debug(f"Orders API Response: {json.dumps(response_data, indent=2)}")
+        
+        # Extract orders from the results key
+        orders = response_data.get('results', [])
+        
+        if not orders:
+            logger.info("No orders found")
+            return "No orders to process"
+        
+        logger.info(f"Found {len(orders)} orders to process")
+        
+        # Step 2: Process each non-manual order
+        for order in orders:
+            order_id = order['id']
+            order_name = order['name']
+            
+            logger.info(f"Processing order: {order_name} (ID: {order_id})")
+            logger.debug(f"Order details: {json.dumps(order, indent=2)}")
+            
+            # Skip manual orders
+            if 'Manual' in order_name:
+                logger.info(f"Skipping manual order: {order_name}")
                 continue
+            
+            # Log order fetch
+            TransactionLog.objects.create(
+                order_id=order_id,
+                order_name=order_name,
+                action='fetch_order',
+                status='success',
+                details=order  # Don't pre-serialize the JSON
+            )
+            
+            # Allocate order
+            allocate_url = f"{api_host}/api/order/{order_id}/allocate"
+            logger.info(f"Allocating order: {allocate_url}")
+            
+            response = requests.post(allocate_url, timeout=30)
+            response.raise_for_status()
+            allocation_result = response.json()
+            
+            logger.info(f"Allocation result: {json.dumps(allocation_result, indent=2)}")
+            
+            # Log allocation
+            TransactionLog.objects.create(
+                order_id=order_id,
+                order_name=order_name,
+                action='allocate_order',
+                status='success',
+                details=allocation_result  # Don't pre-serialize the JSON
+            )
+            
+            # Start order
+            start_url = f"{api_host}/api/order/{order_id}/start"
+            logger.info(f"Starting order: {start_url}")
+            
+            response = requests.post(start_url, timeout=30)
+            response.raise_for_status()
+            start_result = response.json()
+            
+            logger.info(f"Start result: {json.dumps(start_result, indent=2)}")
+            
+            # Log start
+            TransactionLog.objects.create(
+                order_id=order_id,
+                order_name=order_name,
+                action='start_order',
+                status='success',
+                details=start_result  # Don't pre-serialize the JSON
+            )
+            
+            # Step 3: Monitor processor status
+            while True:
+                processor_url = f"{api_host}/api/processor/{processor_id}"
+                logger.info(f"Checking processor status: {processor_url}")
+                
+                response = requests.get(processor_url, timeout=30)
+                response.raise_for_status()
+                processor_tasks = response.json()
+                
+                logger.debug(f"Processor status response: {json.dumps(processor_tasks, indent=2)}")
+                
+                if not processor_tasks:
+                    logger.info("No tasks currently processing")
+                    break
+                
+                # Process each task
+                for task in processor_tasks:
+                    task_id = task['task_id']
+                    task_quantity = task['task_quantity']
+                    
+                    logger.info(f"Found task {task_id} with quantity {task_quantity}")
+                    logger.debug(f"Task details: {json.dumps(task, indent=2)}")
+                    
+                    # Wait 15 seconds before completing
+                    logger.info("Waiting 15 seconds before completing task")
+                    time.sleep(15)
+                    
+                    # Complete task
+                    complete_url = f"{api_host}/api/confirm-from-displaytool"
+                    payload = {
+                        "task_id": task_id,
+                        "quantity_measured": None,
+                        "quantity_input": task_quantity,
+                        "isContainerFullQ": False
+                    }
+                    
+                    logger.info(f"Completing task: {complete_url}")
+                    logger.debug(f"Completion payload: {json.dumps(payload, indent=2)}")
+                    
+                    response = requests.post(complete_url, json=payload, timeout=30)
+                    response.raise_for_status()
+                    
+                    logger.info("Task completed successfully")
+            
+            logger.info(f"Finished processing order: {order_name}")
+        
+        logger.info("="*80)
+        return "Demo mode processing completed"
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API error: {str(e)}")
+        logger.exception("Full traceback:")
+        return f"API error: {str(e)}"
                 
     except Exception as e:
         logger.error(f"Critical error in process_demo_orders task: {str(e)}")
         logger.exception("Full traceback:")
-        
-    logger.info("="*80)
-    return "Demo mode processing completed"
+        logger.info("="*80)
+        return f"Error: {str(e)}"
 
 @shared_task
 def vlm_demo_task():
